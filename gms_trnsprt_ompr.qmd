@@ -1,8 +1,12 @@
 ---
 title: "Transportation Model with OMPR and HiGHS"
-format: html
 date: September 4, 2022
 author: notesofdabbler
+execute: 
+  warning: false
+format:
+  html:
+    code-fold: true
 ---
 
 We show how to solve the transportation problem using [OMPR](https://dirkschumacher.github.io/ompr/) modeling language and [HiGHS](https://cran.r-project.org/web/packages/highs/index.html) solver. Transportation problem is a classic operations research problem where the objective is to find the minimum cost way to ship material from producers/plants to customers/markets. The specific instance of the problem we have used is from [GAMS model library](https://www.gams.com/latest/gamslib_ml/libhtml/gamslib_trnsport.html). Only portions of R code are shown here. The `.qmd` with all embedded R code is in this [location](https://github.com/notesofdabbler/optwithR/blob/main/gms_trnsprt_ompr.qmd)
@@ -93,16 +97,24 @@ visNetwork(visnetdf$nodes_df, visnetdf$edges_df) %>% visEdges(arrows = "to") %>%
 
 ### Mathematical Formulation
 $$
-\begin{array}{ll}
-\min &\sum_{p=1}^P\sum_{m=1}^Mc_{pm}x_{pm} \\
-&\sum_{m=1}^Mx_{pm} \leq cap_p, \;p=1,2,\ldots,P \\
-&\sum_{p=1}^Px_{pm} \geq dem_m, \;m=1,2,\ldots,M \\
+\begin{array}{llr}
+\min &\sum_{p=1}^P\sum_{m=1}^Mc_{pm}x_{pm} & (a) \\
+&\sum_{m=1}^Mx_{pm} \leq cap_p, \;p=1,2,\ldots,P  & (b)\\
+&\sum_{p=1}^Px_{pm} \geq dem_m, \;m=1,2,\ldots,M & (c) \\
 &x_{pm} \geq 0, \;p=1,2,\ldots,P;\;m=1,2,\ldots,M
 \end{array}
 $$
+where
+
+* $x_{pm}$ is the quantity to be shipped from plant $p$ to market $m$ (decision variable)
+* Objective (a) is to minimize shipping cost
+* Constraint (b) ensures that total supply from a plant is below capacity
+* Constraint (c) ensures that demand for each market is met.
+
 ### Model build using OMPR
 
 ```{r}
+#| code-fold: false
 np = length(plants)
 nm = length(mkts)
 
@@ -172,3 +184,13 @@ visNetwork(solvisnetdf$nodes_df, solvisnetdf$edges_df) %>% visEdges(arrows = "to
 ```
 :::
 
+::: {.panel-tabset}
+
+### ""
+
+### Session Info
+```{r}
+sessionInfo()
+```
+
+:::

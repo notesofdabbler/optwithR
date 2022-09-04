@@ -136,58 +136,50 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 
 </header>
 
-<p>We show how to solve the transportation problem using <a href="https://dirkschumacher.github.io/ompr/">OMPR</a> modeling language and <a href="https://cran.r-project.org/web/packages/highs/index.html">HiGHS</a> solver. Transportation problem is a classic operations research problem where the objective is to find the minimum cost way to ship material from producers/plants to customers/markets. The specific instance of the problem we have used is from <a href="https://www.gams.com/latest/gamslib_ml/libhtml/gamslib_trnsport.html">GAMS model library</a>.</p>
+<p>We show how to solve the transportation problem using <a href="https://dirkschumacher.github.io/ompr/">OMPR</a> modeling language and <a href="https://cran.r-project.org/web/packages/highs/index.html">HiGHS</a> solver. Transportation problem is a classic operations research problem where the objective is to find the minimum cost way to ship material from producers/plants to customers/markets. The specific instance of the problem we have used is from <a href="https://www.gams.com/latest/gamslib_ml/libhtml/gamslib_trnsport.html">GAMS model library</a>. Only portions of R code are shown here. The <code>.qmd</code> with all embedded R code is in this <a href="https://github.com/notesofdabbler/optwithR/blob/main/gms_trnsprt_ompr.qmd">location</a></p>
 <div class="cell">
+<details>
+<summary>Code</summary>
 <div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># load libraries and source functions</span></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(dplyr)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output cell-output-stderr">
-<pre><code>
-Attaching package: 'dplyr'</code></pre>
-</div>
-<div class="cell-output cell-output-stderr">
-<pre><code>The following objects are masked from 'package:stats':
-
-    filter, lag</code></pre>
-</div>
-<div class="cell-output cell-output-stderr">
-<pre><code>The following objects are masked from 'package:base':
-
-    intersect, setdiff, setequal, union</code></pre>
-</div>
-<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(highs)</span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(ompr)</span>
-<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(ompr.roi)</span>
-<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(gt)</span>
-<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(glue)</span>
-<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(visNetwork)</span>
-<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a><span class="fu">source</span>(<span class="st">"ompr_helperfns.R"</span>)</span>
-<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a><span class="fu">source</span>(<span class="st">"helper_fns.R"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(dplyr)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(highs)</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(ompr)</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(ompr.roi)</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(gt)</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(glue)</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(visNetwork)</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="fu">source</span>(<span class="st">"ompr_helperfns.R"</span>)</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="fu">source</span>(<span class="st">"helper_fns.R"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
 </div>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>plants <span class="ot">=</span> <span class="fu">c</span>(<span class="st">"seattle"</span>, <span class="st">"sandiego"</span>)</span>
-<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>mkts <span class="ot">=</span> <span class="fu">c</span>(<span class="st">"newyork"</span>, <span class="st">"chicago"</span>, <span class="st">"topeka"</span>)</span>
-<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>cap <span class="ot">=</span> <span class="fu">c</span>(<span class="dv">350</span>, <span class="dv">600</span>) <span class="co"># plant capacity</span></span>
-<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>dem <span class="ot">=</span> <span class="fu">c</span>(<span class="dv">325</span>, <span class="dv">300</span>, <span class="dv">275</span>) <span class="co"># market demand</span></span>
-<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a><span class="co"># distance and cost between plants and markets</span></span>
-<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>distdf <span class="ot">=</span> <span class="fu">tibble</span>(</span>
-<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">plants =</span> <span class="fu">rep</span>(plants, <span class="at">each =</span> <span class="dv">3</span>),</span>
-<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>  <span class="at">mkts =</span> <span class="fu">rep</span>(mkts, <span class="dv">2</span>),</span>
-<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>  <span class="at">dist =</span> <span class="fu">c</span>(<span class="fl">2.5</span>, <span class="fl">1.7</span>, <span class="fl">1.8</span>, <span class="fl">2.5</span>, <span class="fl">1.8</span>, <span class="fl">1.4</span>) <span class="co"># distance in thousands of miles</span></span>
-<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a>f <span class="ot">=</span> <span class="dv">90</span> <span class="co"># freight dollars per case per thousands of miles</span></span>
-<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a>distdf <span class="ot">=</span> distdf <span class="sc">%&gt;%</span> <span class="fu">mutate</span>(<span class="at">cost =</span> f <span class="sc">*</span> dist <span class="sc">/</span> <span class="dv">1000</span>)</span>
-<span id="cb6-17"><a href="#cb6-17" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-18"><a href="#cb6-18" aria-hidden="true" tabindex="-1"></a>cost <span class="ot">=</span> <span class="cf">function</span>(i, j) {</span>
-<span id="cb6-19"><a href="#cb6-19" aria-hidden="true" tabindex="-1"></a>    p <span class="ot">=</span> plants[i]</span>
-<span id="cb6-20"><a href="#cb6-20" aria-hidden="true" tabindex="-1"></a>    m <span class="ot">=</span> mkts[j]</span>
-<span id="cb6-21"><a href="#cb6-21" aria-hidden="true" tabindex="-1"></a>    costval <span class="ot">=</span> distdf <span class="sc">%&gt;%</span> <span class="fu">filter</span>(plants <span class="sc">==</span> p, mkts <span class="sc">==</span> m) <span class="sc">%&gt;%</span> <span class="fu">pull</span>(cost)</span>
-<span id="cb6-22"><a href="#cb6-22" aria-hidden="true" tabindex="-1"></a>    <span class="fu">return</span>(costval)</span>
-<span id="cb6-23"><a href="#cb6-23" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>plants <span class="ot">=</span> <span class="fu">c</span>(<span class="st">"seattle"</span>, <span class="st">"sandiego"</span>)</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>mkts <span class="ot">=</span> <span class="fu">c</span>(<span class="st">"newyork"</span>, <span class="st">"chicago"</span>, <span class="st">"topeka"</span>)</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>cap <span class="ot">=</span> <span class="fu">c</span>(<span class="dv">350</span>, <span class="dv">600</span>) <span class="co"># plant capacity</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>dem <span class="ot">=</span> <span class="fu">c</span>(<span class="dv">325</span>, <span class="dv">300</span>, <span class="dv">275</span>) <span class="co"># market demand</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a><span class="co"># distance and cost between plants and markets</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>distdf <span class="ot">=</span> <span class="fu">tibble</span>(</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">plants =</span> <span class="fu">rep</span>(plants, <span class="at">each =</span> <span class="dv">3</span>),</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>  <span class="at">mkts =</span> <span class="fu">rep</span>(mkts, <span class="dv">2</span>),</span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>  <span class="at">dist =</span> <span class="fu">c</span>(<span class="fl">2.5</span>, <span class="fl">1.7</span>, <span class="fl">1.8</span>, <span class="fl">2.5</span>, <span class="fl">1.8</span>, <span class="fl">1.4</span>) <span class="co"># distance in thousands of miles</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>f <span class="ot">=</span> <span class="dv">90</span> <span class="co"># freight dollars per case per thousands of miles</span></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>distdf <span class="ot">=</span> distdf <span class="sc">%&gt;%</span> <span class="fu">mutate</span>(<span class="at">cost =</span> f <span class="sc">*</span> dist <span class="sc">/</span> <span class="dv">1000</span>)</span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>cost <span class="ot">=</span> <span class="cf">function</span>(i, j) {</span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>    p <span class="ot">=</span> plants[i]</span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>    m <span class="ot">=</span> mkts[j]</span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>    costval <span class="ot">=</span> distdf <span class="sc">%&gt;%</span> <span class="fu">filter</span>(plants <span class="sc">==</span> p, mkts <span class="sc">==</span> m) <span class="sc">%&gt;%</span> <span class="fu">pull</span>(cost)</span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a>    <span class="fu">return</span>(costval)</span>
+<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
 </div>
 <p>In this case there are 2 plants and 3 markets with data for the problem listed below:</p>
 <div class="panel-tabset">
@@ -197,15 +189,18 @@ Attaching package: 'dplyr'</code></pre>
 <div class="columns">
 <div class="column" style="width:30%;">
 <div class="cell">
-<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="fu">tibble</span>(<span class="at">plant =</span> plants, <span class="at">capacity =</span> cap) <span class="sc">%&gt;%</span> <span class="fu">gt</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">tibble</span>(<span class="at">plant =</span> plants, <span class="at">capacity =</span> cap) <span class="sc">%&gt;%</span> <span class="fu">gt</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
 <div class="cell-output-display">
 
-<div id="ovdhttdvfr" style="overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<div id="zeistgkbxo" style="overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
 <style>html {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Helvetica Neue', 'Fira Sans', 'Droid Sans', Arial, sans-serif;
 }
 
-#ovdhttdvfr .gt_table {
+#zeistgkbxo .gt_table {
   display: table;
   border-collapse: collapse;
   margin-left: auto;
@@ -230,7 +225,7 @@ Attaching package: 'dplyr'</code></pre>
   border-left-color: #D3D3D3;
 }
 
-#ovdhttdvfr .gt_heading {
+#zeistgkbxo .gt_heading {
   background-color: #FFFFFF;
   text-align: center;
   border-bottom-color: #FFFFFF;
@@ -242,7 +237,7 @@ Attaching package: 'dplyr'</code></pre>
   border-right-color: #D3D3D3;
 }
 
-#ovdhttdvfr .gt_title {
+#zeistgkbxo .gt_title {
   color: #333333;
   font-size: 125%;
   font-weight: initial;
@@ -254,7 +249,7 @@ Attaching package: 'dplyr'</code></pre>
   border-bottom-width: 0;
 }
 
-#ovdhttdvfr .gt_subtitle {
+#zeistgkbxo .gt_subtitle {
   color: #333333;
   font-size: 85%;
   font-weight: initial;
@@ -266,13 +261,13 @@ Attaching package: 'dplyr'</code></pre>
   border-top-width: 0;
 }
 
-#ovdhttdvfr .gt_bottom_border {
+#zeistgkbxo .gt_bottom_border {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
 }
 
-#ovdhttdvfr .gt_col_headings {
+#zeistgkbxo .gt_col_headings {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -287,7 +282,7 @@ Attaching package: 'dplyr'</code></pre>
   border-right-color: #D3D3D3;
 }
 
-#ovdhttdvfr .gt_col_heading {
+#zeistgkbxo .gt_col_heading {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -307,7 +302,7 @@ Attaching package: 'dplyr'</code></pre>
   overflow-x: hidden;
 }
 
-#ovdhttdvfr .gt_column_spanner_outer {
+#zeistgkbxo .gt_column_spanner_outer {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -319,15 +314,15 @@ Attaching package: 'dplyr'</code></pre>
   padding-right: 4px;
 }
 
-#ovdhttdvfr .gt_column_spanner_outer:first-child {
+#zeistgkbxo .gt_column_spanner_outer:first-child {
   padding-left: 0;
 }
 
-#ovdhttdvfr .gt_column_spanner_outer:last-child {
+#zeistgkbxo .gt_column_spanner_outer:last-child {
   padding-right: 0;
 }
 
-#ovdhttdvfr .gt_column_spanner {
+#zeistgkbxo .gt_column_spanner {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
@@ -339,7 +334,7 @@ Attaching package: 'dplyr'</code></pre>
   width: 100%;
 }
 
-#ovdhttdvfr .gt_group_heading {
+#zeistgkbxo .gt_group_heading {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -364,7 +359,7 @@ Attaching package: 'dplyr'</code></pre>
   vertical-align: middle;
 }
 
-#ovdhttdvfr .gt_empty_group_heading {
+#zeistgkbxo .gt_empty_group_heading {
   padding: 0.5px;
   color: #333333;
   background-color: #FFFFFF;
@@ -379,15 +374,15 @@ Attaching package: 'dplyr'</code></pre>
   vertical-align: middle;
 }
 
-#ovdhttdvfr .gt_from_md > :first-child {
+#zeistgkbxo .gt_from_md > :first-child {
   margin-top: 0;
 }
 
-#ovdhttdvfr .gt_from_md > :last-child {
+#zeistgkbxo .gt_from_md > :last-child {
   margin-bottom: 0;
 }
 
-#ovdhttdvfr .gt_row {
+#zeistgkbxo .gt_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -406,7 +401,7 @@ Attaching package: 'dplyr'</code></pre>
   overflow-x: hidden;
 }
 
-#ovdhttdvfr .gt_stub {
+#zeistgkbxo .gt_stub {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -419,7 +414,7 @@ Attaching package: 'dplyr'</code></pre>
   padding-right: 5px;
 }
 
-#ovdhttdvfr .gt_stub_row_group {
+#zeistgkbxo .gt_stub_row_group {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -433,11 +428,11 @@ Attaching package: 'dplyr'</code></pre>
   vertical-align: top;
 }
 
-#ovdhttdvfr .gt_row_group_first td {
+#zeistgkbxo .gt_row_group_first td {
   border-top-width: 2px;
 }
 
-#ovdhttdvfr .gt_summary_row {
+#zeistgkbxo .gt_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -447,16 +442,16 @@ Attaching package: 'dplyr'</code></pre>
   padding-right: 5px;
 }
 
-#ovdhttdvfr .gt_first_summary_row {
+#zeistgkbxo .gt_first_summary_row {
   border-top-style: solid;
   border-top-color: #D3D3D3;
 }
 
-#ovdhttdvfr .gt_first_summary_row.thick {
+#zeistgkbxo .gt_first_summary_row.thick {
   border-top-width: 2px;
 }
 
-#ovdhttdvfr .gt_last_summary_row {
+#zeistgkbxo .gt_last_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -466,7 +461,7 @@ Attaching package: 'dplyr'</code></pre>
   border-bottom-color: #D3D3D3;
 }
 
-#ovdhttdvfr .gt_grand_summary_row {
+#zeistgkbxo .gt_grand_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -476,7 +471,7 @@ Attaching package: 'dplyr'</code></pre>
   padding-right: 5px;
 }
 
-#ovdhttdvfr .gt_first_grand_summary_row {
+#zeistgkbxo .gt_first_grand_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -486,11 +481,11 @@ Attaching package: 'dplyr'</code></pre>
   border-top-color: #D3D3D3;
 }
 
-#ovdhttdvfr .gt_striped {
+#zeistgkbxo .gt_striped {
   background-color: rgba(128, 128, 128, 0.05);
 }
 
-#ovdhttdvfr .gt_table_body {
+#zeistgkbxo .gt_table_body {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -499,7 +494,7 @@ Attaching package: 'dplyr'</code></pre>
   border-bottom-color: #D3D3D3;
 }
 
-#ovdhttdvfr .gt_footnotes {
+#zeistgkbxo .gt_footnotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -513,7 +508,7 @@ Attaching package: 'dplyr'</code></pre>
   border-right-color: #D3D3D3;
 }
 
-#ovdhttdvfr .gt_footnote {
+#zeistgkbxo .gt_footnote {
   margin: 0px;
   font-size: 90%;
   padding-left: 4px;
@@ -522,7 +517,7 @@ Attaching package: 'dplyr'</code></pre>
   padding-right: 5px;
 }
 
-#ovdhttdvfr .gt_sourcenotes {
+#zeistgkbxo .gt_sourcenotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -536,7 +531,7 @@ Attaching package: 'dplyr'</code></pre>
   border-right-color: #D3D3D3;
 }
 
-#ovdhttdvfr .gt_sourcenote {
+#zeistgkbxo .gt_sourcenote {
   font-size: 90%;
   padding-top: 4px;
   padding-bottom: 4px;
@@ -544,64 +539,64 @@ Attaching package: 'dplyr'</code></pre>
   padding-right: 5px;
 }
 
-#ovdhttdvfr .gt_left {
+#zeistgkbxo .gt_left {
   text-align: left;
 }
 
-#ovdhttdvfr .gt_center {
+#zeistgkbxo .gt_center {
   text-align: center;
 }
 
-#ovdhttdvfr .gt_right {
+#zeistgkbxo .gt_right {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
-#ovdhttdvfr .gt_font_normal {
+#zeistgkbxo .gt_font_normal {
   font-weight: normal;
 }
 
-#ovdhttdvfr .gt_font_bold {
+#zeistgkbxo .gt_font_bold {
   font-weight: bold;
 }
 
-#ovdhttdvfr .gt_font_italic {
+#zeistgkbxo .gt_font_italic {
   font-style: italic;
 }
 
-#ovdhttdvfr .gt_super {
+#zeistgkbxo .gt_super {
   font-size: 65%;
 }
 
-#ovdhttdvfr .gt_footnote_marks {
+#zeistgkbxo .gt_footnote_marks {
   font-style: italic;
   font-weight: normal;
   font-size: 75%;
   vertical-align: 0.4em;
 }
 
-#ovdhttdvfr .gt_asterisk {
+#zeistgkbxo .gt_asterisk {
   font-size: 100%;
   vertical-align: 0;
 }
 
-#ovdhttdvfr .gt_indent_1 {
+#zeistgkbxo .gt_indent_1 {
   text-indent: 5px;
 }
 
-#ovdhttdvfr .gt_indent_2 {
+#zeistgkbxo .gt_indent_2 {
   text-indent: 10px;
 }
 
-#ovdhttdvfr .gt_indent_3 {
+#zeistgkbxo .gt_indent_3 {
   text-indent: 15px;
 }
 
-#ovdhttdvfr .gt_indent_4 {
+#zeistgkbxo .gt_indent_4 {
   text-indent: 20px;
 }
 
-#ovdhttdvfr .gt_indent_5 {
+#zeistgkbxo .gt_indent_5 {
   text-indent: 25px;
 }
 </style>
@@ -627,15 +622,18 @@ Attaching package: 'dplyr'</code></pre>
 </div>
 </div><div class="column" style="width:30%;">
 <div class="cell">
-<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="fu">tibble</span>(<span class="at">market =</span> mkts, <span class="at">demand =</span> dem) <span class="sc">%&gt;%</span> <span class="fu">gt</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">tibble</span>(<span class="at">market =</span> mkts, <span class="at">demand =</span> dem) <span class="sc">%&gt;%</span> <span class="fu">gt</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
 <div class="cell-output-display">
 
-<div id="tkuuhdvate" style="overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<div id="iorgidfgpz" style="overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
 <style>html {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Helvetica Neue', 'Fira Sans', 'Droid Sans', Arial, sans-serif;
 }
 
-#tkuuhdvate .gt_table {
+#iorgidfgpz .gt_table {
   display: table;
   border-collapse: collapse;
   margin-left: auto;
@@ -660,7 +658,7 @@ Attaching package: 'dplyr'</code></pre>
   border-left-color: #D3D3D3;
 }
 
-#tkuuhdvate .gt_heading {
+#iorgidfgpz .gt_heading {
   background-color: #FFFFFF;
   text-align: center;
   border-bottom-color: #FFFFFF;
@@ -672,7 +670,7 @@ Attaching package: 'dplyr'</code></pre>
   border-right-color: #D3D3D3;
 }
 
-#tkuuhdvate .gt_title {
+#iorgidfgpz .gt_title {
   color: #333333;
   font-size: 125%;
   font-weight: initial;
@@ -684,7 +682,7 @@ Attaching package: 'dplyr'</code></pre>
   border-bottom-width: 0;
 }
 
-#tkuuhdvate .gt_subtitle {
+#iorgidfgpz .gt_subtitle {
   color: #333333;
   font-size: 85%;
   font-weight: initial;
@@ -696,13 +694,13 @@ Attaching package: 'dplyr'</code></pre>
   border-top-width: 0;
 }
 
-#tkuuhdvate .gt_bottom_border {
+#iorgidfgpz .gt_bottom_border {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
 }
 
-#tkuuhdvate .gt_col_headings {
+#iorgidfgpz .gt_col_headings {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -717,7 +715,7 @@ Attaching package: 'dplyr'</code></pre>
   border-right-color: #D3D3D3;
 }
 
-#tkuuhdvate .gt_col_heading {
+#iorgidfgpz .gt_col_heading {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -737,7 +735,7 @@ Attaching package: 'dplyr'</code></pre>
   overflow-x: hidden;
 }
 
-#tkuuhdvate .gt_column_spanner_outer {
+#iorgidfgpz .gt_column_spanner_outer {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -749,15 +747,15 @@ Attaching package: 'dplyr'</code></pre>
   padding-right: 4px;
 }
 
-#tkuuhdvate .gt_column_spanner_outer:first-child {
+#iorgidfgpz .gt_column_spanner_outer:first-child {
   padding-left: 0;
 }
 
-#tkuuhdvate .gt_column_spanner_outer:last-child {
+#iorgidfgpz .gt_column_spanner_outer:last-child {
   padding-right: 0;
 }
 
-#tkuuhdvate .gt_column_spanner {
+#iorgidfgpz .gt_column_spanner {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
@@ -769,7 +767,7 @@ Attaching package: 'dplyr'</code></pre>
   width: 100%;
 }
 
-#tkuuhdvate .gt_group_heading {
+#iorgidfgpz .gt_group_heading {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -794,7 +792,7 @@ Attaching package: 'dplyr'</code></pre>
   vertical-align: middle;
 }
 
-#tkuuhdvate .gt_empty_group_heading {
+#iorgidfgpz .gt_empty_group_heading {
   padding: 0.5px;
   color: #333333;
   background-color: #FFFFFF;
@@ -809,15 +807,15 @@ Attaching package: 'dplyr'</code></pre>
   vertical-align: middle;
 }
 
-#tkuuhdvate .gt_from_md > :first-child {
+#iorgidfgpz .gt_from_md > :first-child {
   margin-top: 0;
 }
 
-#tkuuhdvate .gt_from_md > :last-child {
+#iorgidfgpz .gt_from_md > :last-child {
   margin-bottom: 0;
 }
 
-#tkuuhdvate .gt_row {
+#iorgidfgpz .gt_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -836,7 +834,7 @@ Attaching package: 'dplyr'</code></pre>
   overflow-x: hidden;
 }
 
-#tkuuhdvate .gt_stub {
+#iorgidfgpz .gt_stub {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -849,7 +847,7 @@ Attaching package: 'dplyr'</code></pre>
   padding-right: 5px;
 }
 
-#tkuuhdvate .gt_stub_row_group {
+#iorgidfgpz .gt_stub_row_group {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -863,11 +861,11 @@ Attaching package: 'dplyr'</code></pre>
   vertical-align: top;
 }
 
-#tkuuhdvate .gt_row_group_first td {
+#iorgidfgpz .gt_row_group_first td {
   border-top-width: 2px;
 }
 
-#tkuuhdvate .gt_summary_row {
+#iorgidfgpz .gt_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -877,16 +875,16 @@ Attaching package: 'dplyr'</code></pre>
   padding-right: 5px;
 }
 
-#tkuuhdvate .gt_first_summary_row {
+#iorgidfgpz .gt_first_summary_row {
   border-top-style: solid;
   border-top-color: #D3D3D3;
 }
 
-#tkuuhdvate .gt_first_summary_row.thick {
+#iorgidfgpz .gt_first_summary_row.thick {
   border-top-width: 2px;
 }
 
-#tkuuhdvate .gt_last_summary_row {
+#iorgidfgpz .gt_last_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -896,7 +894,7 @@ Attaching package: 'dplyr'</code></pre>
   border-bottom-color: #D3D3D3;
 }
 
-#tkuuhdvate .gt_grand_summary_row {
+#iorgidfgpz .gt_grand_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -906,7 +904,7 @@ Attaching package: 'dplyr'</code></pre>
   padding-right: 5px;
 }
 
-#tkuuhdvate .gt_first_grand_summary_row {
+#iorgidfgpz .gt_first_grand_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -916,11 +914,11 @@ Attaching package: 'dplyr'</code></pre>
   border-top-color: #D3D3D3;
 }
 
-#tkuuhdvate .gt_striped {
+#iorgidfgpz .gt_striped {
   background-color: rgba(128, 128, 128, 0.05);
 }
 
-#tkuuhdvate .gt_table_body {
+#iorgidfgpz .gt_table_body {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -929,7 +927,7 @@ Attaching package: 'dplyr'</code></pre>
   border-bottom-color: #D3D3D3;
 }
 
-#tkuuhdvate .gt_footnotes {
+#iorgidfgpz .gt_footnotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -943,7 +941,7 @@ Attaching package: 'dplyr'</code></pre>
   border-right-color: #D3D3D3;
 }
 
-#tkuuhdvate .gt_footnote {
+#iorgidfgpz .gt_footnote {
   margin: 0px;
   font-size: 90%;
   padding-left: 4px;
@@ -952,7 +950,7 @@ Attaching package: 'dplyr'</code></pre>
   padding-right: 5px;
 }
 
-#tkuuhdvate .gt_sourcenotes {
+#iorgidfgpz .gt_sourcenotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -966,7 +964,7 @@ Attaching package: 'dplyr'</code></pre>
   border-right-color: #D3D3D3;
 }
 
-#tkuuhdvate .gt_sourcenote {
+#iorgidfgpz .gt_sourcenote {
   font-size: 90%;
   padding-top: 4px;
   padding-bottom: 4px;
@@ -974,64 +972,64 @@ Attaching package: 'dplyr'</code></pre>
   padding-right: 5px;
 }
 
-#tkuuhdvate .gt_left {
+#iorgidfgpz .gt_left {
   text-align: left;
 }
 
-#tkuuhdvate .gt_center {
+#iorgidfgpz .gt_center {
   text-align: center;
 }
 
-#tkuuhdvate .gt_right {
+#iorgidfgpz .gt_right {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
-#tkuuhdvate .gt_font_normal {
+#iorgidfgpz .gt_font_normal {
   font-weight: normal;
 }
 
-#tkuuhdvate .gt_font_bold {
+#iorgidfgpz .gt_font_bold {
   font-weight: bold;
 }
 
-#tkuuhdvate .gt_font_italic {
+#iorgidfgpz .gt_font_italic {
   font-style: italic;
 }
 
-#tkuuhdvate .gt_super {
+#iorgidfgpz .gt_super {
   font-size: 65%;
 }
 
-#tkuuhdvate .gt_footnote_marks {
+#iorgidfgpz .gt_footnote_marks {
   font-style: italic;
   font-weight: normal;
   font-size: 75%;
   vertical-align: 0.4em;
 }
 
-#tkuuhdvate .gt_asterisk {
+#iorgidfgpz .gt_asterisk {
   font-size: 100%;
   vertical-align: 0;
 }
 
-#tkuuhdvate .gt_indent_1 {
+#iorgidfgpz .gt_indent_1 {
   text-indent: 5px;
 }
 
-#tkuuhdvate .gt_indent_2 {
+#iorgidfgpz .gt_indent_2 {
   text-indent: 10px;
 }
 
-#tkuuhdvate .gt_indent_3 {
+#iorgidfgpz .gt_indent_3 {
   text-indent: 15px;
 }
 
-#tkuuhdvate .gt_indent_4 {
+#iorgidfgpz .gt_indent_4 {
   text-indent: 20px;
 }
 
-#tkuuhdvate .gt_indent_5 {
+#iorgidfgpz .gt_indent_5 {
   text-indent: 25px;
 }
 </style>
@@ -1059,15 +1057,18 @@ Attaching package: 'dplyr'</code></pre>
 </div>
 </div><div class="column" style="width:40%;">
 <div class="cell">
-<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>distdf <span class="sc">%&gt;%</span> <span class="fu">select</span>(plants, mkts, cost) <span class="sc">%&gt;%</span> <span class="fu">gt</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>distdf <span class="sc">%&gt;%</span> <span class="fu">select</span>(plants, mkts, cost) <span class="sc">%&gt;%</span> <span class="fu">gt</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
 <div class="cell-output-display">
 
-<div id="wrsuoopdep" style="overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<div id="bcxyrnpanu" style="overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
 <style>html {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Helvetica Neue', 'Fira Sans', 'Droid Sans', Arial, sans-serif;
 }
 
-#wrsuoopdep .gt_table {
+#bcxyrnpanu .gt_table {
   display: table;
   border-collapse: collapse;
   margin-left: auto;
@@ -1092,7 +1093,7 @@ Attaching package: 'dplyr'</code></pre>
   border-left-color: #D3D3D3;
 }
 
-#wrsuoopdep .gt_heading {
+#bcxyrnpanu .gt_heading {
   background-color: #FFFFFF;
   text-align: center;
   border-bottom-color: #FFFFFF;
@@ -1104,7 +1105,7 @@ Attaching package: 'dplyr'</code></pre>
   border-right-color: #D3D3D3;
 }
 
-#wrsuoopdep .gt_title {
+#bcxyrnpanu .gt_title {
   color: #333333;
   font-size: 125%;
   font-weight: initial;
@@ -1116,7 +1117,7 @@ Attaching package: 'dplyr'</code></pre>
   border-bottom-width: 0;
 }
 
-#wrsuoopdep .gt_subtitle {
+#bcxyrnpanu .gt_subtitle {
   color: #333333;
   font-size: 85%;
   font-weight: initial;
@@ -1128,13 +1129,13 @@ Attaching package: 'dplyr'</code></pre>
   border-top-width: 0;
 }
 
-#wrsuoopdep .gt_bottom_border {
+#bcxyrnpanu .gt_bottom_border {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
 }
 
-#wrsuoopdep .gt_col_headings {
+#bcxyrnpanu .gt_col_headings {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -1149,7 +1150,7 @@ Attaching package: 'dplyr'</code></pre>
   border-right-color: #D3D3D3;
 }
 
-#wrsuoopdep .gt_col_heading {
+#bcxyrnpanu .gt_col_heading {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -1169,7 +1170,7 @@ Attaching package: 'dplyr'</code></pre>
   overflow-x: hidden;
 }
 
-#wrsuoopdep .gt_column_spanner_outer {
+#bcxyrnpanu .gt_column_spanner_outer {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -1181,15 +1182,15 @@ Attaching package: 'dplyr'</code></pre>
   padding-right: 4px;
 }
 
-#wrsuoopdep .gt_column_spanner_outer:first-child {
+#bcxyrnpanu .gt_column_spanner_outer:first-child {
   padding-left: 0;
 }
 
-#wrsuoopdep .gt_column_spanner_outer:last-child {
+#bcxyrnpanu .gt_column_spanner_outer:last-child {
   padding-right: 0;
 }
 
-#wrsuoopdep .gt_column_spanner {
+#bcxyrnpanu .gt_column_spanner {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
@@ -1201,7 +1202,7 @@ Attaching package: 'dplyr'</code></pre>
   width: 100%;
 }
 
-#wrsuoopdep .gt_group_heading {
+#bcxyrnpanu .gt_group_heading {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -1226,7 +1227,7 @@ Attaching package: 'dplyr'</code></pre>
   vertical-align: middle;
 }
 
-#wrsuoopdep .gt_empty_group_heading {
+#bcxyrnpanu .gt_empty_group_heading {
   padding: 0.5px;
   color: #333333;
   background-color: #FFFFFF;
@@ -1241,15 +1242,15 @@ Attaching package: 'dplyr'</code></pre>
   vertical-align: middle;
 }
 
-#wrsuoopdep .gt_from_md > :first-child {
+#bcxyrnpanu .gt_from_md > :first-child {
   margin-top: 0;
 }
 
-#wrsuoopdep .gt_from_md > :last-child {
+#bcxyrnpanu .gt_from_md > :last-child {
   margin-bottom: 0;
 }
 
-#wrsuoopdep .gt_row {
+#bcxyrnpanu .gt_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -1268,7 +1269,7 @@ Attaching package: 'dplyr'</code></pre>
   overflow-x: hidden;
 }
 
-#wrsuoopdep .gt_stub {
+#bcxyrnpanu .gt_stub {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -1281,7 +1282,7 @@ Attaching package: 'dplyr'</code></pre>
   padding-right: 5px;
 }
 
-#wrsuoopdep .gt_stub_row_group {
+#bcxyrnpanu .gt_stub_row_group {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -1295,11 +1296,11 @@ Attaching package: 'dplyr'</code></pre>
   vertical-align: top;
 }
 
-#wrsuoopdep .gt_row_group_first td {
+#bcxyrnpanu .gt_row_group_first td {
   border-top-width: 2px;
 }
 
-#wrsuoopdep .gt_summary_row {
+#bcxyrnpanu .gt_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -1309,16 +1310,16 @@ Attaching package: 'dplyr'</code></pre>
   padding-right: 5px;
 }
 
-#wrsuoopdep .gt_first_summary_row {
+#bcxyrnpanu .gt_first_summary_row {
   border-top-style: solid;
   border-top-color: #D3D3D3;
 }
 
-#wrsuoopdep .gt_first_summary_row.thick {
+#bcxyrnpanu .gt_first_summary_row.thick {
   border-top-width: 2px;
 }
 
-#wrsuoopdep .gt_last_summary_row {
+#bcxyrnpanu .gt_last_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -1328,7 +1329,7 @@ Attaching package: 'dplyr'</code></pre>
   border-bottom-color: #D3D3D3;
 }
 
-#wrsuoopdep .gt_grand_summary_row {
+#bcxyrnpanu .gt_grand_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -1338,7 +1339,7 @@ Attaching package: 'dplyr'</code></pre>
   padding-right: 5px;
 }
 
-#wrsuoopdep .gt_first_grand_summary_row {
+#bcxyrnpanu .gt_first_grand_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -1348,11 +1349,11 @@ Attaching package: 'dplyr'</code></pre>
   border-top-color: #D3D3D3;
 }
 
-#wrsuoopdep .gt_striped {
+#bcxyrnpanu .gt_striped {
   background-color: rgba(128, 128, 128, 0.05);
 }
 
-#wrsuoopdep .gt_table_body {
+#bcxyrnpanu .gt_table_body {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -1361,7 +1362,7 @@ Attaching package: 'dplyr'</code></pre>
   border-bottom-color: #D3D3D3;
 }
 
-#wrsuoopdep .gt_footnotes {
+#bcxyrnpanu .gt_footnotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -1375,7 +1376,7 @@ Attaching package: 'dplyr'</code></pre>
   border-right-color: #D3D3D3;
 }
 
-#wrsuoopdep .gt_footnote {
+#bcxyrnpanu .gt_footnote {
   margin: 0px;
   font-size: 90%;
   padding-left: 4px;
@@ -1384,7 +1385,7 @@ Attaching package: 'dplyr'</code></pre>
   padding-right: 5px;
 }
 
-#wrsuoopdep .gt_sourcenotes {
+#bcxyrnpanu .gt_sourcenotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -1398,7 +1399,7 @@ Attaching package: 'dplyr'</code></pre>
   border-right-color: #D3D3D3;
 }
 
-#wrsuoopdep .gt_sourcenote {
+#bcxyrnpanu .gt_sourcenote {
   font-size: 90%;
   padding-top: 4px;
   padding-bottom: 4px;
@@ -1406,64 +1407,64 @@ Attaching package: 'dplyr'</code></pre>
   padding-right: 5px;
 }
 
-#wrsuoopdep .gt_left {
+#bcxyrnpanu .gt_left {
   text-align: left;
 }
 
-#wrsuoopdep .gt_center {
+#bcxyrnpanu .gt_center {
   text-align: center;
 }
 
-#wrsuoopdep .gt_right {
+#bcxyrnpanu .gt_right {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
-#wrsuoopdep .gt_font_normal {
+#bcxyrnpanu .gt_font_normal {
   font-weight: normal;
 }
 
-#wrsuoopdep .gt_font_bold {
+#bcxyrnpanu .gt_font_bold {
   font-weight: bold;
 }
 
-#wrsuoopdep .gt_font_italic {
+#bcxyrnpanu .gt_font_italic {
   font-style: italic;
 }
 
-#wrsuoopdep .gt_super {
+#bcxyrnpanu .gt_super {
   font-size: 65%;
 }
 
-#wrsuoopdep .gt_footnote_marks {
+#bcxyrnpanu .gt_footnote_marks {
   font-style: italic;
   font-weight: normal;
   font-size: 75%;
   vertical-align: 0.4em;
 }
 
-#wrsuoopdep .gt_asterisk {
+#bcxyrnpanu .gt_asterisk {
   font-size: 100%;
   vertical-align: 0;
 }
 
-#wrsuoopdep .gt_indent_1 {
+#bcxyrnpanu .gt_indent_1 {
   text-indent: 5px;
 }
 
-#wrsuoopdep .gt_indent_2 {
+#bcxyrnpanu .gt_indent_2 {
   text-indent: 10px;
 }
 
-#wrsuoopdep .gt_indent_3 {
+#bcxyrnpanu .gt_indent_3 {
   text-indent: 15px;
 }
 
-#wrsuoopdep .gt_indent_4 {
+#bcxyrnpanu .gt_indent_4 {
   text-indent: 20px;
 }
 
-#wrsuoopdep .gt_indent_5 {
+#bcxyrnpanu .gt_indent_5 {
   text-indent: 25px;
 }
 </style>
@@ -1507,17 +1508,20 @@ Attaching package: 'dplyr'</code></pre>
 </div>
 <div id="tabset-1-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-1-2-tab">
 <div class="cell">
-<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="co"># visualize network</span></span>
-<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>visnetdf <span class="ot">=</span> <span class="fu">make_visnetdf</span>(distdf, plants, mkts)</span>
-<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>visnetdf<span class="sc">$</span>nodes_df <span class="ot">=</span> visnetdf<span class="sc">$</span>nodes_df <span class="sc">%&gt;%</span> <span class="fu">mutate</span>(<span class="at">level =</span> <span class="fu">ifelse</span>(id <span class="sc">&lt;=</span> <span class="dv">2</span>, <span class="dv">1</span>, <span class="dv">2</span>),</span>
-<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>                                       <span class="at">capdem =</span> <span class="fu">c</span>(cap, dem),</span>
-<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>                                       <span class="at">label =</span> <span class="fu">paste0</span>(node, <span class="st">" ("</span>, capdem,<span class="st">")"</span>),</span>
-<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>                                       <span class="at">color =</span> <span class="fu">c</span>(<span class="fu">rep</span>(<span class="st">"red"</span>, <span class="dv">2</span>), <span class="fu">rep</span>(<span class="st">"green"</span>, <span class="dv">3</span>)))</span>
-<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a><span class="fu">visNetwork</span>(visnetdf<span class="sc">$</span>nodes_df, visnetdf<span class="sc">$</span>edges_df) <span class="sc">%&gt;%</span> <span class="fu">visEdges</span>(<span class="at">arrows =</span> <span class="st">"to"</span>) <span class="sc">%&gt;%</span></span>
-<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">visHierarchicalLayout</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="co"># visualize network</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>visnetdf <span class="ot">=</span> <span class="fu">make_visnetdf</span>(distdf, plants, mkts)</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>visnetdf<span class="sc">$</span>nodes_df <span class="ot">=</span> visnetdf<span class="sc">$</span>nodes_df <span class="sc">%&gt;%</span> <span class="fu">mutate</span>(<span class="at">level =</span> <span class="fu">ifelse</span>(id <span class="sc">&lt;=</span> <span class="dv">2</span>, <span class="dv">1</span>, <span class="dv">2</span>),</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>                                       <span class="at">capdem =</span> <span class="fu">c</span>(cap, dem),</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>                                       <span class="at">label =</span> <span class="fu">paste0</span>(node, <span class="st">" ("</span>, capdem,<span class="st">")"</span>),</span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>                                       <span class="at">color =</span> <span class="fu">c</span>(<span class="fu">rep</span>(<span class="st">"red"</span>, <span class="dv">2</span>), <span class="fu">rep</span>(<span class="st">"green"</span>, <span class="dv">3</span>)))</span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a><span class="fu">visNetwork</span>(visnetdf<span class="sc">$</span>nodes_df, visnetdf<span class="sc">$</span>edges_df) <span class="sc">%&gt;%</span> <span class="fu">visEdges</span>(<span class="at">arrows =</span> <span class="st">"to"</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">visHierarchicalLayout</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
 <div class="cell-output-display">
-<div id="htmlwidget-bf4f7ff5655fa1362fe5" style="width:100%;height:464px;" class="visNetwork html-widget"></div>
-<script type="application/json" data-for="htmlwidget-bf4f7ff5655fa1362fe5">{"x":{"nodes":{"node":["seattle","sandiego","newyork","chicago","topeka"],"id":[1,2,3,4,5],"level":[1,1,2,2,2],"capdem":[350,600,325,300,275],"label":["seattle (350)","sandiego (600)","newyork (325)","chicago (300)","topeka (275)"],"color":["red","red","green","green","green"]},"edges":{"plants":["seattle","seattle","seattle","sandiego","sandiego","sandiego"],"mkts":["newyork","chicago","topeka","newyork","chicago","topeka"],"dist":[2.5,1.7,1.8,2.5,1.8,1.4],"cost":[0.225,0.153,0.162,0.225,0.162,0.126],"from":[1,1,1,2,2,2],"to":[3,4,5,3,4,5]},"nodesToDataframe":true,"edgesToDataframe":true,"options":{"width":"100%","height":"100%","nodes":{"shape":"dot"},"manipulation":{"enabled":false},"edges":{"arrows":"to"},"layout":{"hierarchical":{"enabled":true}}},"groups":null,"width":null,"height":null,"idselection":{"enabled":false},"byselection":{"enabled":false},"main":null,"submain":null,"footer":null,"background":"rgba(0, 0, 0, 0)"},"evals":[],"jsHooks":[]}</script>
+<div id="htmlwidget-c5ef421a284127dca188" style="width:100%;height:464px;" class="visNetwork html-widget"></div>
+<script type="application/json" data-for="htmlwidget-c5ef421a284127dca188">{"x":{"nodes":{"node":["seattle","sandiego","newyork","chicago","topeka"],"id":[1,2,3,4,5],"level":[1,1,2,2,2],"capdem":[350,600,325,300,275],"label":["seattle (350)","sandiego (600)","newyork (325)","chicago (300)","topeka (275)"],"color":["red","red","green","green","green"]},"edges":{"plants":["seattle","seattle","seattle","sandiego","sandiego","sandiego"],"mkts":["newyork","chicago","topeka","newyork","chicago","topeka"],"dist":[2.5,1.7,1.8,2.5,1.8,1.4],"cost":[0.225,0.153,0.162,0.225,0.162,0.126],"from":[1,1,1,2,2,2],"to":[3,4,5,3,4,5]},"nodesToDataframe":true,"edgesToDataframe":true,"options":{"width":"100%","height":"100%","nodes":{"shape":"dot"},"manipulation":{"enabled":false},"edges":{"arrows":"to"},"layout":{"hierarchical":{"enabled":true}}},"groups":null,"width":null,"height":null,"idselection":{"enabled":false},"byselection":{"enabled":false},"main":null,"submain":null,"footer":null,"background":"rgba(0, 0, 0, 0)"},"evals":[],"jsHooks":[]}</script>
 </div>
 </div>
 </div>
@@ -1528,83 +1532,102 @@ Attaching package: 'dplyr'</code></pre>
 <div class="tab-content">
 <div id="tabset-2-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-2-1-tab">
 <p><span class="math display">\[
-\begin{array}{ll}
-\min &amp;\sum_{p=1}^P\sum_{m=1}^Mc_{pm}x_{pm} \\
-&amp;\sum_{m=1}^Mx_{pm} \leq cap_p, \;p=1,2,\ldots,P \\
-&amp;\sum_{p=1}^Px_{pm} \geq dem_m, \;m=1,2,\ldots,M \\
+\begin{array}{llr}
+\min &amp;\sum_{p=1}^P\sum_{m=1}^Mc_{pm}x_{pm} &amp; (a) \\
+&amp;\sum_{m=1}^Mx_{pm} \leq cap_p, \;p=1,2,\ldots,P  &amp; (b)\\
+&amp;\sum_{p=1}^Px_{pm} \geq dem_m, \;m=1,2,\ldots,M &amp; (c) \\
 &amp;x_{pm} \geq 0, \;p=1,2,\ldots,P;\;m=1,2,\ldots,M
 \end{array}
 \]</span></p>
+<p>where</p>
+<ul>
+<li><span class="math inline">\(x_{pm}\)</span> is the quantity to be shipped from plant <span class="math inline">\(p\)</span> to market <span class="math inline">\(m\)</span> (decision variable)</li>
+<li>Objective (a) is to minimize shipping cost</li>
+<li>Constraint (b) ensures that total supply from a plant is below capacity</li>
+<li>Constraint (c) ensures that demand for each market is met.</li>
+</ul>
 </div>
 <div id="tabset-2-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-2-2-tab">
 <div class="cell">
-<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>np <span class="ot">=</span> <span class="fu">length</span>(plants)</span>
-<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>nm <span class="ot">=</span> <span class="fu">length</span>(mkts)</span>
-<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a><span class="co"># create ompr model</span></span>
-<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>mdl <span class="ot">=</span> <span class="fu">MIPModel</span>() <span class="sc">%&gt;%</span></span>
-<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">add_variable</span>(x[i, j], <span class="at">i=</span><span class="dv">1</span><span class="sc">:</span>np, <span class="at">j=</span><span class="dv">1</span><span class="sc">:</span>nm, <span class="at">type =</span> <span class="st">"continuous"</span>,<span class="at">lb =</span> <span class="dv">0</span>) <span class="sc">%&gt;%</span></span>
-<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>  <span class="co"># objective: min cost</span></span>
-<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">set_objective</span>(<span class="fu">sum_over</span>(<span class="fu">cost</span>(i, j) <span class="sc">*</span> x[i, j], <span class="at">i =</span> <span class="dv">1</span><span class="sc">:</span>np, <span class="at">j =</span> <span class="dv">1</span><span class="sc">:</span>nm)) <span class="sc">%&gt;%</span> </span>
-<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a>  <span class="co"># supply from each plant is below capacity</span></span>
-<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">add_constraint</span>(<span class="fu">sum_over</span>(x[i, j], <span class="at">j =</span> <span class="dv">1</span><span class="sc">:</span>nm) <span class="sc">&lt;=</span> cap[i], <span class="at">i =</span> <span class="dv">1</span><span class="sc">:</span>np) <span class="sc">%&gt;%</span>  </span>
-<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a>  <span class="co"># supply to each market meets demand</span></span>
-<span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">add_constraint</span>(<span class="fu">sum_over</span>(x[i, j], <span class="at">i =</span> <span class="dv">1</span><span class="sc">:</span>np) <span class="sc">&gt;=</span> dem[j], <span class="at">j =</span> <span class="dv">1</span><span class="sc">:</span>nm)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>np <span class="ot">=</span> <span class="fu">length</span>(plants)</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>nm <span class="ot">=</span> <span class="fu">length</span>(mkts)</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="co"># create ompr model</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>mdl <span class="ot">=</span> <span class="fu">MIPModel</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">add_variable</span>(x[i, j], <span class="at">i=</span><span class="dv">1</span><span class="sc">:</span>np, <span class="at">j=</span><span class="dv">1</span><span class="sc">:</span>nm, <span class="at">type =</span> <span class="st">"continuous"</span>,<span class="at">lb =</span> <span class="dv">0</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>  <span class="co"># objective: min cost</span></span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">set_objective</span>(<span class="fu">sum_over</span>(<span class="fu">cost</span>(i, j) <span class="sc">*</span> x[i, j], <span class="at">i =</span> <span class="dv">1</span><span class="sc">:</span>np, <span class="at">j =</span> <span class="dv">1</span><span class="sc">:</span>nm)) <span class="sc">%&gt;%</span> </span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>  <span class="co"># supply from each plant is below capacity</span></span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">add_constraint</span>(<span class="fu">sum_over</span>(x[i, j], <span class="at">j =</span> <span class="dv">1</span><span class="sc">:</span>nm) <span class="sc">&lt;=</span> cap[i], <span class="at">i =</span> <span class="dv">1</span><span class="sc">:</span>np) <span class="sc">%&gt;%</span>  </span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a>  <span class="co"># supply to each market meets demand</span></span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">add_constraint</span>(<span class="fu">sum_over</span>(x[i, j], <span class="at">i =</span> <span class="dv">1</span><span class="sc">:</span>np) <span class="sc">&gt;=</span> dem[j], <span class="at">j =</span> <span class="dv">1</span><span class="sc">:</span>nm)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 </div>
 </div>
 </div>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="co"># convert ompr model to highs model</span></span>
-<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>highs_mdl <span class="ot">=</span> <span class="fu">as_highs_model</span>(mdl)</span>
-<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a><span class="co"># solve highs model</span></span>
-<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>s <span class="ot">&lt;-</span> <span class="fu">highs_solve</span>(<span class="at">L =</span> <span class="fu">as.numeric</span>(highs_mdl<span class="sc">$</span>L), <span class="at">lower =</span> highs_mdl<span class="sc">$</span>lower, <span class="at">upper =</span> highs_mdl<span class="sc">$</span>upper,</span>
-<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>                 <span class="at">A =</span> highs_mdl<span class="sc">$</span>A, <span class="at">lhs =</span> highs_mdl<span class="sc">$</span>lhs, <span class="at">rhs =</span> highs_mdl<span class="sc">$</span>rhs,</span>
-<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>                 <span class="at">offset =</span> highs_mdl<span class="sc">$</span>offset)</span>
-<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a><span class="co"># get solution</span></span>
-<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a>sol_status <span class="ot">=</span> s[[<span class="st">"status"</span>]]</span>
-<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a>zobj <span class="ot">=</span> s[[<span class="st">"objective_value"</span>]]</span>
-<span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a>xsol <span class="ot">=</span> s[[<span class="st">"primal_solution"</span>]]</span>
-<span id="cb12-13"><a href="#cb12-13" aria-hidden="true" tabindex="-1"></a><span class="fu">names</span>(xsol) <span class="ot">=</span> <span class="fu">variable_keys</span>(mdl)</span>
-<span id="cb12-14"><a href="#cb12-14" aria-hidden="true" tabindex="-1"></a>zobj</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="co"># convert ompr model to highs model</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>highs_mdl <span class="ot">=</span> <span class="fu">as_highs_model</span>(mdl)</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a><span class="co"># solve highs model</span></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>s <span class="ot">&lt;-</span> <span class="fu">highs_solve</span>(<span class="at">L =</span> <span class="fu">as.numeric</span>(highs_mdl<span class="sc">$</span>L), <span class="at">lower =</span> highs_mdl<span class="sc">$</span>lower, <span class="at">upper =</span> highs_mdl<span class="sc">$</span>upper,</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>                 <span class="at">A =</span> highs_mdl<span class="sc">$</span>A, <span class="at">lhs =</span> highs_mdl<span class="sc">$</span>lhs, <span class="at">rhs =</span> highs_mdl<span class="sc">$</span>rhs,</span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>                 <span class="at">offset =</span> highs_mdl<span class="sc">$</span>offset)</span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a><span class="co"># get solution</span></span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>sol_status <span class="ot">=</span> s[[<span class="st">"status"</span>]]</span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a>zobj <span class="ot">=</span> s[[<span class="st">"objective_value"</span>]]</span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a>xsol <span class="ot">=</span> s[[<span class="st">"primal_solution"</span>]]</span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a><span class="fu">names</span>(xsol) <span class="ot">=</span> <span class="fu">variable_keys</span>(mdl)</span>
+<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a>zobj</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
 <div class="cell-output cell-output-stdout">
 <pre><code>[1] 153.675</code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>xsol</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>xsol</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
 <div class="cell-output cell-output-stdout">
 <pre><code>x[1,1] x[1,2] x[1,3] x[2,1] x[2,2] x[2,3] 
      0    300      0    325      0    275 </code></pre>
 </div>
 </div>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>xsolL <span class="ot">=</span> <span class="fu">list</span>()</span>
-<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>r <span class="ot">=</span> <span class="dv">0</span></span>
-<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span>np) {</span>
-<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (j <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span>nm) {</span>
-<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a>    r <span class="ot">=</span> r <span class="sc">+</span> <span class="dv">1</span></span>
-<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a>    xsolL[[r]] <span class="ot">=</span> <span class="fu">c</span>(plants[i], mkts[j], xsol[[<span class="fu">glue</span>(<span class="st">'x[{i},{j}]'</span>)]])</span>
-<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a>  }</span>
-<span id="cb16-8"><a href="#cb16-8" aria-hidden="true" tabindex="-1"></a>}</span>
-<span id="cb16-9"><a href="#cb16-9" aria-hidden="true" tabindex="-1"></a>soldf <span class="ot">=</span> <span class="fu">as.data.frame</span>(<span class="fu">do.call</span>(rbind, xsolL))</span>
-<span id="cb16-10"><a href="#cb16-10" aria-hidden="true" tabindex="-1"></a><span class="fu">names</span>(soldf) <span class="ot">=</span> <span class="fu">c</span>(<span class="st">"plants"</span>, <span class="st">"mkts"</span>, <span class="st">"qty"</span>)</span>
-<span id="cb16-11"><a href="#cb16-11" aria-hidden="true" tabindex="-1"></a>soldf <span class="ot">=</span> soldf <span class="sc">%&gt;%</span> <span class="fu">mutate</span>(<span class="at">qty =</span> <span class="fu">as.numeric</span>(<span class="fu">as.character</span>(qty)))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>xsolL <span class="ot">=</span> <span class="fu">list</span>()</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>r <span class="ot">=</span> <span class="dv">0</span></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span>np) {</span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (j <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span>nm) {</span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>    r <span class="ot">=</span> r <span class="sc">+</span> <span class="dv">1</span></span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>    xsolL[[r]] <span class="ot">=</span> <span class="fu">c</span>(plants[i], mkts[j], xsol[[<span class="fu">glue</span>(<span class="st">'x[{i},{j}]'</span>)]])</span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a>soldf <span class="ot">=</span> <span class="fu">as.data.frame</span>(<span class="fu">do.call</span>(rbind, xsolL))</span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a><span class="fu">names</span>(soldf) <span class="ot">=</span> <span class="fu">c</span>(<span class="st">"plants"</span>, <span class="st">"mkts"</span>, <span class="st">"qty"</span>)</span>
+<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a>soldf <span class="ot">=</span> soldf <span class="sc">%&gt;%</span> <span class="fu">mutate</span>(<span class="at">qty =</span> <span class="fu">as.numeric</span>(<span class="fu">as.character</span>(qty)))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
 </div>
 <div class="panel-tabset">
 <ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-3-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-3-1" role="tab" aria-controls="tabset-3-1" aria-selected="true" href="">Solution</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-3-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-3-2" role="tab" aria-controls="tabset-3-2" aria-selected="false" href="">Network</a></li></ul>
 <div class="tab-content">
 <div id="tabset-3-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-3-1-tab">
 <div class="cell">
-<div class="sourceCode cell-code" id="cb17"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>soldf <span class="sc">%&gt;%</span> <span class="fu">gt</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>soldf <span class="sc">%&gt;%</span> <span class="fu">gt</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
 <div class="cell-output-display">
 
-<div id="pvfbwpfeii" style="overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<div id="fpcibhbiql" style="overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
 <style>html {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Helvetica Neue', 'Fira Sans', 'Droid Sans', Arial, sans-serif;
 }
 
-#pvfbwpfeii .gt_table {
+#fpcibhbiql .gt_table {
   display: table;
   border-collapse: collapse;
   margin-left: auto;
@@ -1629,7 +1652,7 @@ Attaching package: 'dplyr'</code></pre>
   border-left-color: #D3D3D3;
 }
 
-#pvfbwpfeii .gt_heading {
+#fpcibhbiql .gt_heading {
   background-color: #FFFFFF;
   text-align: center;
   border-bottom-color: #FFFFFF;
@@ -1641,7 +1664,7 @@ Attaching package: 'dplyr'</code></pre>
   border-right-color: #D3D3D3;
 }
 
-#pvfbwpfeii .gt_title {
+#fpcibhbiql .gt_title {
   color: #333333;
   font-size: 125%;
   font-weight: initial;
@@ -1653,7 +1676,7 @@ Attaching package: 'dplyr'</code></pre>
   border-bottom-width: 0;
 }
 
-#pvfbwpfeii .gt_subtitle {
+#fpcibhbiql .gt_subtitle {
   color: #333333;
   font-size: 85%;
   font-weight: initial;
@@ -1665,13 +1688,13 @@ Attaching package: 'dplyr'</code></pre>
   border-top-width: 0;
 }
 
-#pvfbwpfeii .gt_bottom_border {
+#fpcibhbiql .gt_bottom_border {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
 }
 
-#pvfbwpfeii .gt_col_headings {
+#fpcibhbiql .gt_col_headings {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -1686,7 +1709,7 @@ Attaching package: 'dplyr'</code></pre>
   border-right-color: #D3D3D3;
 }
 
-#pvfbwpfeii .gt_col_heading {
+#fpcibhbiql .gt_col_heading {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -1706,7 +1729,7 @@ Attaching package: 'dplyr'</code></pre>
   overflow-x: hidden;
 }
 
-#pvfbwpfeii .gt_column_spanner_outer {
+#fpcibhbiql .gt_column_spanner_outer {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -1718,15 +1741,15 @@ Attaching package: 'dplyr'</code></pre>
   padding-right: 4px;
 }
 
-#pvfbwpfeii .gt_column_spanner_outer:first-child {
+#fpcibhbiql .gt_column_spanner_outer:first-child {
   padding-left: 0;
 }
 
-#pvfbwpfeii .gt_column_spanner_outer:last-child {
+#fpcibhbiql .gt_column_spanner_outer:last-child {
   padding-right: 0;
 }
 
-#pvfbwpfeii .gt_column_spanner {
+#fpcibhbiql .gt_column_spanner {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
@@ -1738,7 +1761,7 @@ Attaching package: 'dplyr'</code></pre>
   width: 100%;
 }
 
-#pvfbwpfeii .gt_group_heading {
+#fpcibhbiql .gt_group_heading {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -1763,7 +1786,7 @@ Attaching package: 'dplyr'</code></pre>
   vertical-align: middle;
 }
 
-#pvfbwpfeii .gt_empty_group_heading {
+#fpcibhbiql .gt_empty_group_heading {
   padding: 0.5px;
   color: #333333;
   background-color: #FFFFFF;
@@ -1778,15 +1801,15 @@ Attaching package: 'dplyr'</code></pre>
   vertical-align: middle;
 }
 
-#pvfbwpfeii .gt_from_md > :first-child {
+#fpcibhbiql .gt_from_md > :first-child {
   margin-top: 0;
 }
 
-#pvfbwpfeii .gt_from_md > :last-child {
+#fpcibhbiql .gt_from_md > :last-child {
   margin-bottom: 0;
 }
 
-#pvfbwpfeii .gt_row {
+#fpcibhbiql .gt_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -1805,7 +1828,7 @@ Attaching package: 'dplyr'</code></pre>
   overflow-x: hidden;
 }
 
-#pvfbwpfeii .gt_stub {
+#fpcibhbiql .gt_stub {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -1818,7 +1841,7 @@ Attaching package: 'dplyr'</code></pre>
   padding-right: 5px;
 }
 
-#pvfbwpfeii .gt_stub_row_group {
+#fpcibhbiql .gt_stub_row_group {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -1832,11 +1855,11 @@ Attaching package: 'dplyr'</code></pre>
   vertical-align: top;
 }
 
-#pvfbwpfeii .gt_row_group_first td {
+#fpcibhbiql .gt_row_group_first td {
   border-top-width: 2px;
 }
 
-#pvfbwpfeii .gt_summary_row {
+#fpcibhbiql .gt_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -1846,16 +1869,16 @@ Attaching package: 'dplyr'</code></pre>
   padding-right: 5px;
 }
 
-#pvfbwpfeii .gt_first_summary_row {
+#fpcibhbiql .gt_first_summary_row {
   border-top-style: solid;
   border-top-color: #D3D3D3;
 }
 
-#pvfbwpfeii .gt_first_summary_row.thick {
+#fpcibhbiql .gt_first_summary_row.thick {
   border-top-width: 2px;
 }
 
-#pvfbwpfeii .gt_last_summary_row {
+#fpcibhbiql .gt_last_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -1865,7 +1888,7 @@ Attaching package: 'dplyr'</code></pre>
   border-bottom-color: #D3D3D3;
 }
 
-#pvfbwpfeii .gt_grand_summary_row {
+#fpcibhbiql .gt_grand_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -1875,7 +1898,7 @@ Attaching package: 'dplyr'</code></pre>
   padding-right: 5px;
 }
 
-#pvfbwpfeii .gt_first_grand_summary_row {
+#fpcibhbiql .gt_first_grand_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -1885,11 +1908,11 @@ Attaching package: 'dplyr'</code></pre>
   border-top-color: #D3D3D3;
 }
 
-#pvfbwpfeii .gt_striped {
+#fpcibhbiql .gt_striped {
   background-color: rgba(128, 128, 128, 0.05);
 }
 
-#pvfbwpfeii .gt_table_body {
+#fpcibhbiql .gt_table_body {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -1898,7 +1921,7 @@ Attaching package: 'dplyr'</code></pre>
   border-bottom-color: #D3D3D3;
 }
 
-#pvfbwpfeii .gt_footnotes {
+#fpcibhbiql .gt_footnotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -1912,7 +1935,7 @@ Attaching package: 'dplyr'</code></pre>
   border-right-color: #D3D3D3;
 }
 
-#pvfbwpfeii .gt_footnote {
+#fpcibhbiql .gt_footnote {
   margin: 0px;
   font-size: 90%;
   padding-left: 4px;
@@ -1921,7 +1944,7 @@ Attaching package: 'dplyr'</code></pre>
   padding-right: 5px;
 }
 
-#pvfbwpfeii .gt_sourcenotes {
+#fpcibhbiql .gt_sourcenotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -1935,7 +1958,7 @@ Attaching package: 'dplyr'</code></pre>
   border-right-color: #D3D3D3;
 }
 
-#pvfbwpfeii .gt_sourcenote {
+#fpcibhbiql .gt_sourcenote {
   font-size: 90%;
   padding-top: 4px;
   padding-bottom: 4px;
@@ -1943,64 +1966,64 @@ Attaching package: 'dplyr'</code></pre>
   padding-right: 5px;
 }
 
-#pvfbwpfeii .gt_left {
+#fpcibhbiql .gt_left {
   text-align: left;
 }
 
-#pvfbwpfeii .gt_center {
+#fpcibhbiql .gt_center {
   text-align: center;
 }
 
-#pvfbwpfeii .gt_right {
+#fpcibhbiql .gt_right {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
-#pvfbwpfeii .gt_font_normal {
+#fpcibhbiql .gt_font_normal {
   font-weight: normal;
 }
 
-#pvfbwpfeii .gt_font_bold {
+#fpcibhbiql .gt_font_bold {
   font-weight: bold;
 }
 
-#pvfbwpfeii .gt_font_italic {
+#fpcibhbiql .gt_font_italic {
   font-style: italic;
 }
 
-#pvfbwpfeii .gt_super {
+#fpcibhbiql .gt_super {
   font-size: 65%;
 }
 
-#pvfbwpfeii .gt_footnote_marks {
+#fpcibhbiql .gt_footnote_marks {
   font-style: italic;
   font-weight: normal;
   font-size: 75%;
   vertical-align: 0.4em;
 }
 
-#pvfbwpfeii .gt_asterisk {
+#fpcibhbiql .gt_asterisk {
   font-size: 100%;
   vertical-align: 0;
 }
 
-#pvfbwpfeii .gt_indent_1 {
+#fpcibhbiql .gt_indent_1 {
   text-indent: 5px;
 }
 
-#pvfbwpfeii .gt_indent_2 {
+#fpcibhbiql .gt_indent_2 {
   text-indent: 10px;
 }
 
-#pvfbwpfeii .gt_indent_3 {
+#fpcibhbiql .gt_indent_3 {
   text-indent: 15px;
 }
 
-#pvfbwpfeii .gt_indent_4 {
+#fpcibhbiql .gt_indent_4 {
   text-indent: 20px;
 }
 
-#pvfbwpfeii .gt_indent_5 {
+#fpcibhbiql .gt_indent_5 {
   text-indent: 25px;
 }
 </style>
@@ -2042,19 +2065,76 @@ Attaching package: 'dplyr'</code></pre>
 </div>
 <div id="tabset-3-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-3-2-tab">
 <div class="cell">
-<div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="co"># visnetwork visualization of solution</span></span>
-<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>solvisnetdf <span class="ot">=</span> <span class="fu">make_visnetdf</span>(soldf <span class="sc">%&gt;%</span> <span class="fu">filter</span>(qty <span class="sc">&gt;</span> <span class="dv">0</span>), plants, mkts)</span>
-<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>solvisnetdf<span class="sc">$</span>nodes_df <span class="ot">=</span> solvisnetdf<span class="sc">$</span>nodes_df <span class="sc">%&gt;%</span> <span class="fu">mutate</span>(<span class="at">level =</span> <span class="fu">ifelse</span>(id <span class="sc">&lt;=</span> <span class="dv">2</span>, <span class="dv">1</span>, <span class="dv">2</span>),</span>
-<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>                                                       <span class="at">capdem =</span> <span class="fu">c</span>(cap, dem),</span>
-<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a>                                                       <span class="at">label =</span> <span class="fu">paste0</span>(node, <span class="st">" ("</span>, capdem,<span class="st">")"</span>),</span>
-<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a>                                                       <span class="at">color =</span> <span class="fu">c</span>(<span class="fu">rep</span>(<span class="st">"red"</span>, <span class="dv">2</span>), <span class="fu">rep</span>(<span class="st">"green"</span>, <span class="dv">3</span>))</span>
-<span id="cb18-7"><a href="#cb18-7" aria-hidden="true" tabindex="-1"></a>                                                       )</span>
-<span id="cb18-8"><a href="#cb18-8" aria-hidden="true" tabindex="-1"></a>solvisnetdf<span class="sc">$</span>edges_df <span class="ot">=</span> solvisnetdf<span class="sc">$</span>edges_df <span class="sc">%&gt;%</span> <span class="fu">mutate</span>(<span class="at">label =</span> <span class="fu">as.character</span>(qty))</span>
-<span id="cb18-9"><a href="#cb18-9" aria-hidden="true" tabindex="-1"></a><span class="fu">visNetwork</span>(solvisnetdf<span class="sc">$</span>nodes_df, solvisnetdf<span class="sc">$</span>edges_df) <span class="sc">%&gt;%</span> <span class="fu">visEdges</span>(<span class="at">arrows =</span> <span class="st">"to"</span>) <span class="sc">%&gt;%</span></span>
-<span id="cb18-10"><a href="#cb18-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">visHierarchicalLayout</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="co"># visnetwork visualization of solution</span></span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>solvisnetdf <span class="ot">=</span> <span class="fu">make_visnetdf</span>(soldf <span class="sc">%&gt;%</span> <span class="fu">filter</span>(qty <span class="sc">&gt;</span> <span class="dv">0</span>), plants, mkts)</span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>solvisnetdf<span class="sc">$</span>nodes_df <span class="ot">=</span> solvisnetdf<span class="sc">$</span>nodes_df <span class="sc">%&gt;%</span> <span class="fu">mutate</span>(<span class="at">level =</span> <span class="fu">ifelse</span>(id <span class="sc">&lt;=</span> <span class="dv">2</span>, <span class="dv">1</span>, <span class="dv">2</span>),</span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>                                                       <span class="at">capdem =</span> <span class="fu">c</span>(cap, dem),</span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>                                                       <span class="at">label =</span> <span class="fu">paste0</span>(node, <span class="st">" ("</span>, capdem,<span class="st">")"</span>),</span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>                                                       <span class="at">color =</span> <span class="fu">c</span>(<span class="fu">rep</span>(<span class="st">"red"</span>, <span class="dv">2</span>), <span class="fu">rep</span>(<span class="st">"green"</span>, <span class="dv">3</span>))</span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a>                                                       )</span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a>solvisnetdf<span class="sc">$</span>edges_df <span class="ot">=</span> solvisnetdf<span class="sc">$</span>edges_df <span class="sc">%&gt;%</span> <span class="fu">mutate</span>(<span class="at">label =</span> <span class="fu">as.character</span>(qty))</span>
+<span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a><span class="fu">visNetwork</span>(solvisnetdf<span class="sc">$</span>nodes_df, solvisnetdf<span class="sc">$</span>edges_df) <span class="sc">%&gt;%</span> <span class="fu">visEdges</span>(<span class="at">arrows =</span> <span class="st">"to"</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb14-10"><a href="#cb14-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">visHierarchicalLayout</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
 <div class="cell-output-display">
-<div id="htmlwidget-64a8c809e0a750785ab6" style="width:100%;height:464px;" class="visNetwork html-widget"></div>
-<script type="application/json" data-for="htmlwidget-64a8c809e0a750785ab6">{"x":{"nodes":{"node":["seattle","sandiego","chicago","newyork","topeka"],"id":[1,2,3,4,5],"level":[1,1,2,2,2],"capdem":[350,600,325,300,275],"label":["seattle (350)","sandiego (600)","chicago (325)","newyork (300)","topeka (275)"],"color":["red","red","green","green","green"]},"edges":{"plants":["seattle","sandiego","sandiego"],"mkts":["chicago","newyork","topeka"],"qty":[300,325,275],"from":[1,2,2],"to":[3,4,5],"label":["300","325","275"]},"nodesToDataframe":true,"edgesToDataframe":true,"options":{"width":"100%","height":"100%","nodes":{"shape":"dot"},"manipulation":{"enabled":false},"edges":{"arrows":"to"},"layout":{"hierarchical":{"enabled":true}}},"groups":null,"width":null,"height":null,"idselection":{"enabled":false},"byselection":{"enabled":false},"main":null,"submain":null,"footer":null,"background":"rgba(0, 0, 0, 0)"},"evals":[],"jsHooks":[]}</script>
+<div id="htmlwidget-105e4b3a13f3404fa798" style="width:100%;height:464px;" class="visNetwork html-widget"></div>
+<script type="application/json" data-for="htmlwidget-105e4b3a13f3404fa798">{"x":{"nodes":{"node":["seattle","sandiego","chicago","newyork","topeka"],"id":[1,2,3,4,5],"level":[1,1,2,2,2],"capdem":[350,600,325,300,275],"label":["seattle (350)","sandiego (600)","chicago (325)","newyork (300)","topeka (275)"],"color":["red","red","green","green","green"]},"edges":{"plants":["seattle","sandiego","sandiego"],"mkts":["chicago","newyork","topeka"],"qty":[300,325,275],"from":[1,2,2],"to":[3,4,5],"label":["300","325","275"]},"nodesToDataframe":true,"edgesToDataframe":true,"options":{"width":"100%","height":"100%","nodes":{"shape":"dot"},"manipulation":{"enabled":false},"edges":{"arrows":"to"},"layout":{"hierarchical":{"enabled":true}}},"groups":null,"width":null,"height":null,"idselection":{"enabled":false},"byselection":{"enabled":false},"main":null,"submain":null,"footer":null,"background":"rgba(0, 0, 0, 0)"},"evals":[],"jsHooks":[]}</script>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-4-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-4-1" role="tab" aria-controls="tabset-4-1" aria-selected="true" href="">“”</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-4-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-4-2" role="tab" aria-controls="tabset-4-2" aria-selected="false" href="">Session Info</a></li></ul>
+<div class="tab-content">
+<div id="tabset-4-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-4-1-tab">
+
+</div>
+<div id="tabset-4-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-4-2-tab">
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sessionInfo</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>R version 3.6.3 (2020-02-29)
+Platform: x86_64-pc-linux-gnu (64-bit)
+Running under: Ubuntu 20.04.3 LTS
+
+Matrix products: default
+BLAS:   /usr/lib/x86_64-linux-gnu/blas/libblas.so.3.9.0
+LAPACK: /usr/lib/x86_64-linux-gnu/lapack/liblapack.so.3.9.0
+
+locale:
+ [1] LC_CTYPE=en_US.UTF-8       LC_NUMERIC=C              
+ [3] LC_TIME=en_US.UTF-8        LC_COLLATE=en_US.UTF-8    
+ [5] LC_MONETARY=en_US.UTF-8    LC_MESSAGES=en_US.UTF-8   
+ [7] LC_PAPER=en_US.UTF-8       LC_NAME=C                 
+ [9] LC_ADDRESS=C               LC_TELEPHONE=C            
+[11] LC_MEASUREMENT=en_US.UTF-8 LC_IDENTIFICATION=C       
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base     
+
+other attached packages:
+[1] visNetwork_2.1.0 glue_1.6.2       gt_0.7.0         ompr.roi_1.0.0  
+[5] ompr_1.0.2       highs_0.1-2      dplyr_1.0.10    
+
+loaded via a namespace (and not attached):
+ [1] Rcpp_1.0.9        pillar_1.8.1      compiler_3.6.3    tools_3.6.3      
+ [5] digest_0.6.29     gtable_0.3.1      jsonlite_1.8.0    evaluate_0.16    
+ [9] lifecycle_1.0.1   tibble_3.1.8      checkmate_2.1.0   lattice_0.20-40  
+[13] pkgconfig_2.0.3   rlang_1.0.5       Matrix_1.2-18     cli_3.3.0        
+[17] yaml_2.3.5        xfun_0.32         fastmap_1.1.0     listcomp_0.4.1   
+[21] stringr_1.4.1     knitr_1.40        rappdirs_0.3.3    sass_0.4.2       
+[25] generics_0.1.3    vctrs_0.4.1       htmlwidgets_1.5.4 grid_3.6.3       
+[29] tidyselect_1.1.2  data.table_1.14.2 R6_2.5.1          fansi_1.0.3      
+[33] rmarkdown_2.16    ggplot2_3.3.6     purrr_0.3.4       magrittr_2.0.3   
+[37] ellipsis_0.3.2    scales_1.2.1      backports_1.4.1   htmltools_0.5.3  
+[41] colorspace_2.0-3  utf8_1.2.2        stringi_1.7.8     munsell_0.5.0    
+[45] lazyeval_0.2.2   </code></pre>
 </div>
 </div>
 </div>

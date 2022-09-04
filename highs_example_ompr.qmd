@@ -1,8 +1,12 @@
 ---
 title: "'HiGHS' optimization solver with OMPR algebraic modeling system: A Small Example"
-format: html
 date: September 4, 2022
 author: notesofdabbler
+execute: 
+  warning: false
+format:
+  html:
+    code-fold: true
 ---
 
 ```{r}
@@ -15,12 +19,13 @@ library(dplyr)
 source("ompr_helperfns.R")
 ```
 
-We show an example of using [OMPR](https://dirkschumacher.github.io/ompr/) alebraic modeling system for optimization problems with [HiGHS](https://highs.dev/) solver using R package [highs](https://cran.r-project.org/web/packages/highs/index.html). Only portions of R code are shown here. The `.qmd` with all embedded R code is in this [location](https://github.com/notesofdabbler/optwithR/blob/main/highs_example_ompr.qmd).
+We show an example of using [OMPR](https://dirkschumacher.github.io/ompr/) alebraic modeling system for optimization problems with [HiGHS](https://highs.dev/) solver using R package [highs](https://cran.r-project.org/web/packages/highs/index.html). The `.qmd` file is in this [location](https://github.com/notesofdabbler/optwithR/blob/main/highs_example_ompr.qmd).
 
 :::: {.columns}
 
 ::: {.column width="40%"}
 
+#### Example Problem in highs package
 $$
 \begin{array}{ll}
 \min & x_0 + x_1 + 3 \\
@@ -35,7 +40,9 @@ $$
 
 ::: {.column width="60%"}
 
+#### OMPR model
 ```{r}
+#| code-fold: false
 mdl = MIPModel() %>%
       add_variable(x0, lb = 0, ub = 4, type = "continuous") %>%
       add_variable(x1, lb = 1, type = "continuous") %>%
@@ -52,8 +59,11 @@ mdl = MIPModel() %>%
 OMPR is integrated with [ROI](https://cran.r-project.org/web/packages/ROI/index.html) package to solve the model. However, currently I didn't see a ROI plugin for highs solver. So I adapted the `as_ROI_model` function in package `ompr.ROI` to get the needed elements to pass to highs solver.
 
 ```{r}
+#| code-fold: false
+# Convert ompr model to highs model
 highs_mdl = as_highs_model(mdl)
 
+# solve highs model
 s <- highs_solve(L = as.numeric(highs_mdl$L), lower = highs_mdl$lower, upper = highs_mdl$upper,
                  A = highs_mdl$A, lhs = highs_mdl$lhs, rhs = highs_mdl$rhs,
                  offset = highs_mdl$offset)
@@ -62,3 +72,16 @@ s[["status"]]
 s[["objective_value"]]
 s[["primal_solution"]]
 ```
+
+### Session Info
+
+::: {.panel-tabset}
+
+### ""
+
+### Session Info
+```{r}
+sessionInfo()
+```
+
+:::

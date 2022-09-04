@@ -1,4 +1,8 @@
 
+#
+# Map coloring problem with OMPR and HiGHS
+#
+
 library(dplyr)
 library(glue)
 library(ompr)
@@ -12,6 +16,8 @@ library(mapdata)
 theme_set(theme_light())
 
 source("ompr_helperfns.R")
+
+# Processing state adjacency data in a format to use in OMPR model
 
 #
 # US states adjacency data from
@@ -58,12 +64,14 @@ mdl = mdl %>% set_objective(sum_over(y[c], c=1:nc))
 mdl = mdl %>% add_constraint(sum_over(x[i, c], c = 1:nc) == 1, i = 1:ns)
 mdl = mdl %>% add_constraint(x[i, c] + x[j, c] <= y[c], i = 1:ns, j = 1:ns, c = 1:nc, glue("{i}_{j}") %in% edge_str)
 
+# Convert to highs model and solve
 highs_mdl = as_highs_model(mdl)
 
 s <- highs_solve(L = as.numeric(highs_mdl$L), lower = highs_mdl$lower, upper = highs_mdl$upper,
                  A = highs_mdl$A, lhs = highs_mdl$lhs, rhs = highs_mdl$rhs, types = highs_mdl$types,
                  offset = highs_mdl$offset)
 
+# Get solution and visualize in a map
 sol_status = s[["status"]]
 zobj = s[["objective_value"]]
 xsol = s[["primal_solution"]]
@@ -88,6 +96,7 @@ soldf = inner_join(soldf, nodes_df, by = "id")
 colmap = c("1" = "red", "2" = "blue", "3" = "green", "4" = "yellow")
 soldf = soldf %>% mutate(stcol = colmap[colid])
 
+# Visualize solution in a map
 #
 # https://jtr13.github.io/cc19/different-ways-of-plotting-u-s-map-in-r.html
 #

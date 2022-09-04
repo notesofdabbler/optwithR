@@ -1,6 +1,11 @@
+#
+#  Using ompr with highs
+#
+
 library(highs)
 library(ompr)
 library(ompr.roi)
+library(dplyr)
 
 source("ompr_helperfns.R")
 
@@ -28,5 +33,6 @@ s <- highs_solve(L = as.numeric(highs_mdl$L), lower = highs_mdl$lower, upper = h
                  A = highs_mdl$A, lhs = highs_mdl$lhs, rhs = highs_mdl$rhs,
                  offset = highs_mdl$offset)
 
+s[["status"]]
 s[["objective_value"]]
 s[["primal_solution"]]

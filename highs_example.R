@@ -1,3 +1,7 @@
+# Examples from CRAN highs package documentation
+# https://cran.r-project.org/web/packages/highs/index.html
+#
+
 library(highs)
 
 # Minimize:

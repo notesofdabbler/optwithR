@@ -1,0 +1,64 @@
+---
+title: "'HiGHS' optimization solver with OMPR algebraic modeling system: A Small Example"
+format: html
+date: September 4, 2022
+author: notesofdabbler
+---
+
+```{r}
+# load libraries and source functions
+library(highs)
+library(ompr)
+library(ompr.roi)
+library(dplyr)
+
+source("ompr_helperfns.R")
+```
+
+We show an example of using [OMPR](https://dirkschumacher.github.io/ompr/) alebraic modeling system for optimization problems with [HiGHS](https://highs.dev/) solver using R package [highs](https://cran.r-project.org/web/packages/highs/index.html).
+
+:::: {.columns}
+
+::: {.column width="40%"}
+
+$$
+\begin{array}{ll}
+\min & x_0 + x_1 + 3 \\
+& x_1 \leq 7 \\
+& 5 \leq x_0 + 2x_1 \leq 15 \\
+& 6 \leq 3x_0 + 2x_1 \\
+& 0 \leq x_0 \leq 4 \\
+& 1 \leq x_1
+\end{array}
+$$
+:::
+
+::: {.column width="60%"}
+
+```{r}
+mdl = MIPModel() %>%
+      add_variable(x0, lb = 0, ub = 4, type = "continuous") %>%
+      add_variable(x1, lb = 1, type = "continuous") %>%
+      set_objective(x0+x1+3) %>%
+      add_constraint(x1 <= 7) %>%
+      add_constraint(x0 + 2*x1 <= 15) %>%
+      add_constraint(x0 + 2*x1 >= 5) %>%
+      add_constraint(3*x0 + 2*x1 >= 6)
+```
+
+:::
+::::
+
+OMPR is integrated with [ROI](https://cran.r-project.org/web/packages/ROI/index.html) package to solve the model. However, currently I didn't see a ROI plugin for highs solver. So I adapted the `as_ROI_model` function in package `ompr.ROI` to get the needed elements to pass to highs solver.
+
+```{r}
+highs_mdl = as_highs_model(mdl)
+
+s <- highs_solve(L = as.numeric(highs_mdl$L), lower = highs_mdl$lower, upper = highs_mdl$upper,
+                 A = highs_mdl$A, lhs = highs_mdl$lhs, rhs = highs_mdl$rhs,
+                 offset = highs_mdl$offset)
+
+s[["status"]]
+s[["objective_value"]]
+s[["primal_solution"]]
+```

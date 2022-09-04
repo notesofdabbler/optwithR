@@ -1,18 +1,27 @@
-#
-# Transportation Problem from GAMS model library
-# https://www.gams.com/latest/gamslib_ml/libhtml/gamslib_trnsport.html
-#
+---
+title: "Transportation Model with OMPR and HiGHS"
+format: html
+date: September 4, 2022
+author: notesofdabbler
+---
 
+We show how to solve the transportation problem using [OMPR](https://dirkschumacher.github.io/ompr/) modeling language and [HiGHS](https://cran.r-project.org/web/packages/highs/index.html) solver. Transportation problem is a classic operations research problem where the objective is to find the minimum cost way to ship material from producers/plants to customers/markets. The specific instance of the problem we have used is from [GAMS model library](https://www.gams.com/latest/gamslib_ml/libhtml/gamslib_trnsport.html).
+
+```{r}
+# load libraries and source functions
 library(dplyr)
 library(highs)
 library(ompr)
 library(ompr.roi)
+library(gt)
 library(glue)
 library(visNetwork)
 
 source("ompr_helperfns.R")
 source("helper_fns.R")
+```
 
+```{r}
 plants = c("seattle", "sandiego")
 mkts = c("newyork", "chicago", "topeka")
 
@@ -30,6 +39,45 @@ f = 90 # freight dollars per case per thousands of miles
 
 distdf = distdf %>% mutate(cost = f * dist / 1000)
 
+cost = function(i, j) {
+    p = plants[i]
+    m = mkts[j]
+    costval = distdf %>% filter(plants == p, mkts == m) %>% pull(cost)
+    return(costval)
+}
+
+```
+
+In this case there are 2 plants and 3 markets with data for the problem listed below:
+
+::::: {.panel-tabset}
+
+### Data
+
+:::: {.columns}
+
+::: {.column width="30%"}
+```{r}
+tibble(plant = plants, capacity = cap) %>% gt()
+```
+:::
+
+::: {.column width="30%"}
+```{r}
+tibble(market = mkts, demand = dem) %>% gt()
+```
+:::
+
+::: {.column width="40%"}
+```{r}
+distdf %>% select(plants, mkts, cost) %>% gt()
+```
+:::
+::::
+
+### Network
+
+```{r}
 # visualize network
 visnetdf = make_visnetdf(distdf, plants, mkts)
 visnetdf$nodes_df = visnetdf$nodes_df %>% mutate(level = ifelse(id <= 2, 1, 2),
@@ -38,14 +86,23 @@ visnetdf$nodes_df = visnetdf$nodes_df %>% mutate(level = ifelse(id <= 2, 1, 2),
                                        color = c(rep("red", 2), rep("green", 3)))
 visNetwork(visnetdf$nodes_df, visnetdf$edges_df) %>% visEdges(arrows = "to") %>%
   visHierarchicalLayout()
+```
+:::::
 
-cost = function(i, j) {
-    p = plants[i]
-    m = mkts[j]
-    costval = distdf %>% filter(plants == p, mkts == m) %>% pull(cost)
-    return(costval)
-}
+::: {.panel-tabset}
 
+### Mathematical Formulation
+$$
+\begin{array}{ll}
+\min &\sum_{p=1}^P\sum_{m=1}^Mc_{pm}x_{pm} \\
+&\sum_{m=1}^Mx_{pm} \leq cap_p, \;p=1,2,\ldots,P \\
+&\sum_{p=1}^Px_{pm} \geq dem_m, \;m=1,2,\ldots,M \\
+&x_{pm} \geq 0, \;p=1,2,\ldots,P;\;m=1,2,\ldots,M
+\end{array}
+$$
+### Model build using OMPR
+
+```{r}
 np = length(plants)
 nm = length(mkts)
 
@@ -58,7 +115,10 @@ mdl = MIPModel() %>%
   add_constraint(sum_over(x[i, j], j = 1:nm) <= cap[i], i = 1:np) %>%  
   # supply to each market meets demand
   add_constraint(sum_over(x[i, j], i = 1:np) >= dem[j], j = 1:nm)
+```
+:::
 
+```{r}
 # convert ompr model to highs model
 highs_mdl = as_highs_model(mdl)
 
@@ -72,8 +132,11 @@ sol_status = s[["status"]]
 zobj = s[["objective_value"]]
 xsol = s[["primal_solution"]]
 names(xsol) = variable_keys(mdl)
+zobj
+xsol
+```
 
-# get solution into dataframe
+```{r}
 xsolL = list()
 r = 0
 for (i in 1:np) {
@@ -85,7 +148,17 @@ for (i in 1:np) {
 soldf = as.data.frame(do.call(rbind, xsolL))
 names(soldf) = c("plants", "mkts", "qty")
 soldf = soldf %>% mutate(qty = as.numeric(as.character(qty)))
+```
 
+::: {.panel-tabset}
+
+### Solution
+```{r}
+soldf %>% gt()
+```
+
+### Network
+```{r}
 # visnetwork visualization of solution
 solvisnetdf = make_visnetdf(soldf %>% filter(qty > 0), plants, mkts)
 solvisnetdf$nodes_df = solvisnetdf$nodes_df %>% mutate(level = ifelse(id <= 2, 1, 2),
@@ -96,3 +169,6 @@ solvisnetdf$nodes_df = solvisnetdf$nodes_df %>% mutate(level = ifelse(id <= 2, 1
 solvisnetdf$edges_df = solvisnetdf$edges_df %>% mutate(label = as.character(qty))
 visNetwork(solvisnetdf$nodes_df, solvisnetdf$edges_df) %>% visEdges(arrows = "to") %>%
   visHierarchicalLayout()
+```
+:::
+

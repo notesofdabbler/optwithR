@@ -5,7 +5,7 @@ date: September 4, 2022
 author: notesofdabbler
 ---
 
-We show how to solve the transportation problem using [OMPR](https://dirkschumacher.github.io/ompr/) modeling language and [HiGHS](https://cran.r-project.org/web/packages/highs/index.html) solver. Transportation problem is a classic operations research problem where the objective is to find the minimum cost way to ship material from producers/plants to customers/markets. The specific instance of the problem we have used is from [GAMS model library](https://www.gams.com/latest/gamslib_ml/libhtml/gamslib_trnsport.html).
+We show how to solve the transportation problem using [OMPR](https://dirkschumacher.github.io/ompr/) modeling language and [HiGHS](https://cran.r-project.org/web/packages/highs/index.html) solver. Transportation problem is a classic operations research problem where the objective is to find the minimum cost way to ship material from producers/plants to customers/markets. The specific instance of the problem we have used is from [GAMS model library](https://www.gams.com/latest/gamslib_ml/libhtml/gamslib_trnsport.html). Only portions of R code are shown here. The `.qmd` with all embedded R code is in this [location](https://github.com/notesofdabbler/optwithR/blob/main/gms_trnsprt_ompr.qmd)
 
 ```{r}
 # load libraries and source functions

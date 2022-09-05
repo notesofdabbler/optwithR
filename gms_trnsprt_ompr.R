@@ -87,12 +87,12 @@ names(soldf) = c("plants", "mkts", "qty")
 soldf = soldf %>% mutate(qty = as.numeric(as.character(qty)))
 
 # visnetwork visualization of solution
-solvisnetdf = make_visnetdf(soldf %>% filter(qty > 0), plants, mkts)
+solvisnetdf = make_visnetdf(soldf, plants, mkts)
 solvisnetdf$nodes_df = solvisnetdf$nodes_df %>% mutate(level = ifelse(id <= 2, 1, 2),
                                                        capdem = c(cap, dem),
                                                        label = paste0(node, " (", capdem,")"),
                                                        color = c(rep("red", 2), rep("green", 3))
                                                        )
 solvisnetdf$edges_df = solvisnetdf$edges_df %>% mutate(label = as.character(qty))
-visNetwork(solvisnetdf$nodes_df, solvisnetdf$edges_df) %>% visEdges(arrows = "to") %>%
+visNetwork(solvisnetdf$nodes_df, solvisnetdf$edges_df %>% filter(qty > 0)) %>% visEdges(arrows = "to") %>%
   visHierarchicalLayout()

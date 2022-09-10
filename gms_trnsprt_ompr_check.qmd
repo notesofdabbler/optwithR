@@ -1,0 +1,128 @@
+---
+title: "Transportation Model with OMPR and HiGHS"
+date: September 4, 2022
+author: notesofdabbler
+execute: 
+  warning: false
+format:
+  html
+---
+
+We show how to solve the transportation problem using [OMPR](https://dirkschumacher.github.io/ompr/) modeling language and [HiGHS](https://cran.r-project.org/web/packages/highs/index.html) solver. Transportation problem is a classic operations research problem where the objective is to find the minimum cost way to ship material from producers/plants to customers/markets. The specific instance of the problem we have used is from [GAMS model library](https://www.gams.com/latest/gamslib_ml/libhtml/gamslib_trnsport.html). Only portions of R code are shown here. The `.qmd` with all embedded R code is in this [location](https://github.com/notesofdabbler/optwithR/blob/main/gms_trnsprt_ompr.qmd)
+
+```{r}
+library(dplyr)
+library(highs)
+library(ompr)
+library(ompr.highs)
+library(glue)
+library(visNetwork)
+library(gt)
+
+library(ompr.roi)
+
+source("ompr_helperfns.R") # modified as_roi_model to get parameters with highs format
+source("helper_fns.R")
+```
+
+```{r}
+# data for the model
+
+plants = c("seattle", "sandiego")
+mkts = c("newyork", "chicago", "topeka")
+
+cap = c(350, 600) # plant capacity
+dem = c(325, 300, 275) # market demand
+
+# distance and cost between plants and markets
+distdf = tibble(
+  plants = rep(plants, each = 3),
+  mkts = rep(mkts, 2),
+  dist = c(2.5, 1.7, 1.8, 2.5, 1.8, 1.4) # distance in thousands of miles
+)
+
+f = 90 # freight dollars per case per thousands of miles
+
+distdf = distdf %>% mutate(cost = f * dist / 1000)
+
+# visualize network
+visnetdf = make_visnetdf(distdf, plants, mkts)
+visnetdf$nodes_df = visnetdf$nodes_df %>% mutate(level = ifelse(id <= 2, 1, 2),
+                                       capdem = c(cap, dem),
+                                       label = paste0(node, " (", capdem,")"),
+                                       color = c(rep("red", 2), rep("green", 3)))
+visNetwork(visnetdf$nodes_df, visnetdf$edges_df) %>% visEdges(arrows = "to") %>%
+  visHierarchicalLayout()
+
+cost = function(i, j) {
+    p = plants[i]
+    m = mkts[j]
+    costval = distdf %>% filter(plants == p, mkts == m) %>% pull(cost)
+    return(costval)
+}
+```
+
+```{r}
+np = length(plants)
+nm = length(mkts)
+
+# create ompr model
+mdl = MIPModel() %>%
+  add_variable(x[i, j], i=1:np, j=1:nm, type = "continuous",lb = 0) %>%
+  # objective: min cost
+  set_objective(sum_over(cost(i, j) * x[i, j], i = 1:np, j = 1:nm)) %>% 
+  # supply from each plant is below capacity
+  add_constraint(sum_over(x[i, j], j = 1:nm) <= cap[i], i = 1:np) %>%  
+  # supply to each market meets demand
+  add_constraint(sum_over(x[i, j], i = 1:np) >= dem[j], j = 1:nm)
+```
+
+First I solved using the direct OMPR connectivity to HiGHS
+```{r}
+# solve model using ompr connection to highs optimizer
+sol = mdl %>% solve_model(highs_optimizer())
+sol$status
+sol$objective_value
+sol$solution
+soldf_direct = sol %>% get_solution(x[i, j])
+soldf_direct = soldf_direct %>% mutate(plants = plants[i], mkts = mkts[j]) %>% 
+  rename(qty = value)
+
+soldf_direct %>% gt()
+```
+
+Somehow it is trying to match the capacity of seattle plant and hence oversupplies new york market (supply 375 instead of 325). This doesn't seem right.
+
+Next I solve by using an adaptation of `as_roi_model` in `ompr.roi` package and explictly pass the necessary parameters to highs solver
+```{r}
+# solve by using as_roi_model adaptation to convert to highs model and using highs syntax
+# convert ompr model to highs model
+highs_mdl = as_highs_model(mdl)
+
+# solve highs model
+s <- highs_solve(L = as.numeric(highs_mdl$L), lower = highs_mdl$lower, upper = highs_mdl$upper,
+                 A = highs_mdl$A, lhs = highs_mdl$lhs, rhs = highs_mdl$rhs,
+                 offset = highs_mdl$offset)
+
+# get solution
+s[["status"]]
+s[["objective_value"]]
+xsol = s[["primal_solution"]]
+names(xsol) = variable_keys(mdl)
+
+# get solution into dataframe
+xsolL = list()
+r = 0
+for (i in 1:np) {
+  for (j in 1:nm) {
+    r = r + 1
+    xsolL[[r]] = c(plants[i], mkts[j], xsol[[glue('x[{i},{j}]')]])
+  }
+}
+soldf = as.data.frame(do.call(rbind, xsolL))
+names(soldf) = c("plants", "mkts", "qty")
+
+soldf %>% gt()
+```
+
+Here it is not just supplying new york and objective value is lesser.

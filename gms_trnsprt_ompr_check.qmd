@@ -125,4 +125,4 @@ names(soldf) = c("plants", "mkts", "qty")
 soldf %>% gt()
 ```
 
-Here it is not just supplying new york and objective value is lesser.
+Here it is not oversupplying new york and objective value is lesser.

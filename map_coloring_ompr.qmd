@@ -9,7 +9,7 @@ format:
     code-fold: true
 ---
 
-Vertex coloring problem in a graph is to find the minimum number of colors such that no two connected vertices have the same color. A special case is map coloring problem where the vertices are states/countries in a map and edges are pairs of states/countries that are adjacent to each other. Here we illustrate the map coloring problem with [OMPR](https://dirkschumacher.github.io/ompr/) modeling language and [HiGHS](https://cran.r-project.org/web/packages/highs/index.html) solver. Specifically, we want to find the minimum number of colors and the color of each state in US so that no two adjacent states have the same color. Only portions of R code are shown here. The `.qmd` file is in this [location](https://github.com/notesofdabbler/optwithR/blob/main/map_colorig_ompr.qmd)
+Vertex coloring problem in a graph is to find the minimum number of colors such that no two connected vertices have the same color. A special case is map coloring problem where the vertices are states/countries in a map and edges are pairs of states/countries that are adjacent to each other. Here we illustrate the map coloring problem with [OMPR](https://dirkschumacher.github.io/ompr/) modeling language and [HiGHS](https://cran.r-project.org/web/packages/highs/index.html) solver. Specifically, we want to find the minimum number of colors and the color of each state in US so that no two adjacent states have the same color. Only portions of R code are shown here. The `.qmd` file is in this [location](https://github.com/notesofdabbler/optwithR/blob/main/map_coloring_ompr.qmd)
 
 ```{r}
 # load libraries and source functions

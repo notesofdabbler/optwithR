@@ -6,7 +6,7 @@ execute:
   eval: false
 ---
 
-There is a class of software for modeling optimization problems referred to as algebraic modeling systems which provide a unified interface to formulate optimization problems in a manner that is close to mathematical depiction and have the ability to link to different types of solvers (sparing the user from solver specific ways of formulating the problem). Both commercial and open source options are available. [GAMS](https://www.gams.com/) and [AMPL](https://ampl.com/) are examples of commercial options. The popular open source options are [JuMP](https://jump.dev/JuMP.jl/stable/) in Julia and [Pyomo](http://www.pyomo.org/) in python. I have typically used Pyomo in Python but have [explored](https://notesofdabbler.github.io/R_pyomo/2020_07_01_r_pyomo_blogpost.html) using it from R. I recently became aware of algebraic modeling system in R provided by [OMPR](https://dirkschumacher.github.io/ompr/) package. 
+There is a class of software for modeling optimization problems referred to as algebraic modeling systems which provide a unified interface to formulate optimization problems in a manner that is close to mathematical depiction and have the ability to link to different types of solvers (sparing the user from solver specific ways of formulating the problem). Both commercial and open source options are available. [GAMS](https://www.gams.com/) and [AMPL](https://ampl.com/) are examples of commercial options. The popular open source options are [JuMP](https://jump.dev/JuMP.jl/stable/) in Julia and [Pyomo](http://www.pyomo.org/) in python. I have typically used Pyomo in Python but have [explored](https://notesofdabbler.github.io/R_pyomo/2020_07_01_r_pyomo_blogpost.html) using it from R. I recently became aware of algebraic modeling system in R provided by [OMPR](https://dirkschumacher.github.io/ompr/) package developed by [Dirk Schumacher](https://dirkschumacher.github.io/). 
 
 There are commercial and open-source options available for solvers also. For a class of optimization problems referred to as Mixed Integer Linear Programs (MILP), the commercial solvers such as [CPLEX](https://www.ibm.com/analytics/cplex-optimizer), and [GUROBI](https://www.gurobi.com/) perform significantly better than open source solvers such as [glpk](https://www.gnu.org/software/glpk/), and [CBC](https://github.com/coin-or/Cbc). A new open-source solver [HiGHS](https://highs.dev/) has been developed recently that has generated quite a bit of buzz and by different accounts looks like a promising option. There is now a [highs](https://cran.r-project.org/web/packages/highs/index.html) package in R that can call the HiGHS solver.
 
@@ -41,7 +41,7 @@ $$
 mdl = MIPModel() %>%
       add_variable(x0, lb = 0, ub = 4, type = "continuous") %>%
       add_variable(x1, lb = 1, type = "continuous") %>%
-      set_objective(x0+x1+3) %>%
+      set_objective(x0+x1+3, sense = "min") %>%
       add_constraint(x1 <= 7) %>%
       add_constraint(x0 + 2*x1 <= 15) %>%
       add_constraint(x0 + 2*x1 >= 5) %>%
@@ -51,31 +51,16 @@ mdl = MIPModel() %>%
 :::
 ::::
 
-OMPR integrates with [ROI](https://cran.r-project.org/web/packages/ROI/index.html) package to solve an optimization model since ROI package has several solver plugins. However, highs solver doesn't appear to have a ROI plugin yet. 
-
-The highs solver uses the following representation of the optimization problem:
-$$
-\begin{array}{ll}
-\min &Lx + x^tQx + offset \\
-&lhs \leq Ax \leq rhs \\
-&lower \leq x \leq upper \\
-&x \in \{integer, continuous\}
-\end{array}
-$$
-
-So I [adapted](https://github.com/notesofdabbler/optwithR/blob/main/ompr_helperfns.R) the `as_ROI_model` function from package ompr.ROI to provide the information needed $(L, offset, A, lhs, rhs, lower, upper)$ and type of each $x$ variable for calling solver in highs package.
-
+Since OMPR can directly call HiGHS optimizer, we can solve the model and get solution as shown below.
 ```{r}
 #| code-fold: false
-# Convert ompr model to highs model
-highs_mdl = as_highs_model(mdl)
-# solve highs model
-s <- highs_solve(L = as.numeric(highs_mdl$L), lower = highs_mdl$lower, upper = highs_mdl$upper,
-                 A = highs_mdl$A, lhs = highs_mdl$lhs, rhs = highs_mdl$rhs,
-                 offset = highs_mdl$offset)
-s[["status"]]
-s[["objective_value"]]
-s[["primal_solution"]]
+# solve model
+s = mdl %>% solve_model(highs_optimizer())
+
+# get solution
+s$status
+s$objective_value
+s$solution
 ```
 Solving the above problem results in an objective value of 5.75 and solution of (0.5, 2.25)
 
@@ -111,7 +96,7 @@ nm = length(mkts)
 mdl = MIPModel() %>%
   add_variable(x[i, j], i=1:np, j=1:nm, type = "continuous",lb = 0) %>%
   # objective: min cost
-  set_objective(sum_over(cost(i, j) * x[i, j], i = 1:np, j = 1:nm)) %>% 
+  set_objective(sum_over(cost(i, j) * x[i, j], i = 1:np, j = 1:nm), sense = "min") %>% 
   # supply from each plant is below capacity
   add_constraint(sum_over(x[i, j], j = 1:nm) <= cap[i], i = 1:np) %>%  
   # supply to each market meets demand
@@ -167,7 +152,7 @@ edge_str = edge_df %>% mutate(edge_str = glue("{fromid}_{toid}")) %>% pull(edge_
 mdl = MIPModel()
 mdl = mdl %>% add_variable(x[i, c], i = 1:ns, c = 1:nc, type = "integer", lb = 0, ub = 1)
 mdl = mdl %>% add_variable(y[c], c = 1:nc, type = "integer", lb = 0, ub = 1)
-mdl = mdl %>% set_objective(sum_over(y[c], c=1:nc))
+mdl = mdl %>% set_objective(sum_over(y[c], c=1:nc), sense = "min")
 mdl = mdl %>% add_constraint(sum_over(x[i, c], c = 1:nc) == 1, i = 1:ns)
 mdl = mdl %>% add_constraint(x[i, c] + x[j, c] <= y[c], i = 1:ns, j = 1:ns, c = 1:nc, glue("{i}_{j}") %in% edge_str)
 ```

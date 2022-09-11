@@ -6,7 +6,7 @@
 library(dplyr)
 library(glue)
 library(ompr)
-library(ompr.roi)
+library(ompr.highs)
 library(highs)
 library(purrr)
 library(ggplot2)
@@ -14,8 +14,6 @@ library(maps)
 library(mapdata)
 
 theme_set(theme_light())
-
-source("ompr_helperfns.R")
 
 # Processing state adjacency data in a format to use in OMPR model
 
@@ -60,36 +58,20 @@ edge_str = edge_df %>% mutate(edge_str = glue("{fromid}_{toid}")) %>% pull(edge_
 mdl = MIPModel()
 mdl = mdl %>% add_variable(x[i, c], i = 1:ns, c = 1:nc, type = "integer", lb = 0, ub = 1)
 mdl = mdl %>% add_variable(y[c], c = 1:nc, type = "integer", lb = 0, ub = 1)
-mdl = mdl %>% set_objective(sum_over(y[c], c=1:nc))
+mdl = mdl %>% set_objective(sum_over(y[c], c=1:nc), sense = "min")
 mdl = mdl %>% add_constraint(sum_over(x[i, c], c = 1:nc) == 1, i = 1:ns)
 mdl = mdl %>% add_constraint(x[i, c] + x[j, c] <= y[c], i = 1:ns, j = 1:ns, c = 1:nc, glue("{i}_{j}") %in% edge_str)
 
-# Convert to highs model and solve
-highs_mdl = as_highs_model(mdl)
+# solve model
+sol = mdl %>% solve_model(highs_optimizer())
 
-s <- highs_solve(L = as.numeric(highs_mdl$L), lower = highs_mdl$lower, upper = highs_mdl$upper,
-                 A = highs_mdl$A, lhs = highs_mdl$lhs, rhs = highs_mdl$rhs, types = highs_mdl$types,
-                 offset = highs_mdl$offset)
 
 # Get solution and visualize in a map
-sol_status = s[["status"]]
-zobj = s[["objective_value"]]
-xsol = s[["primal_solution"]]
-names(xsol) = variable_keys(mdl)
+sol[["status"]]
+sol[["objective_value"]]
 
-soldf = tibble(var = names(xsol), val = xsol)
-
-parse_xvar = function(varname) {
-  vsplit1 = strsplit(varname, "\\[")[[1]]
-  vsplit2 = strsplit(gsub("\\]", "", vsplit1[2]), ",")[[1]]
-  id = as.numeric(vsplit2[1])
-  colid = as.numeric(vsplit2[2])
-  return(c(id, colid))
-}
-
-soldf = soldf %>% filter(grepl("x", var)) %>% filter(val == 1)
-soldf = soldf %>% mutate(id = map_dbl(var, function(x) parse_xvar(x)[1]),
-                         colid = map_dbl(var, function(x) parse_xvar(x)[2]))
+soldf = sol %>% get_solution(x[i, c]) %>% filter(value == 1) %>%
+  rename(id = i, colid = c)
 
 soldf = inner_join(soldf, nodes_df, by = "id")
 

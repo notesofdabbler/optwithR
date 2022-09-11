@@ -6,11 +6,11 @@
 library(dplyr)
 library(highs)
 library(ompr)
-library(ompr.roi)
+library(ompr.highs)
 library(glue)
 library(visNetwork)
+library(gt)
 
-source("ompr_helperfns.R")
 source("helper_fns.R")
 
 plants = c("seattle", "sandiego")
@@ -53,38 +53,23 @@ nm = length(mkts)
 mdl = MIPModel() %>%
   add_variable(x[i, j], i=1:np, j=1:nm, type = "continuous",lb = 0) %>%
   # objective: min cost
-  set_objective(sum_over(cost(i, j) * x[i, j], i = 1:np, j = 1:nm)) %>% 
+  set_objective(sum_over(cost(i, j) * x[i, j], i = 1:np, j = 1:nm), sense = "min") %>% 
   # supply from each plant is below capacity
   add_constraint(sum_over(x[i, j], j = 1:nm) <= cap[i], i = 1:np) %>%  
   # supply to each market meets demand
   add_constraint(sum_over(x[i, j], i = 1:np) >= dem[j], j = 1:nm)
 
-# convert ompr model to highs model
-highs_mdl = as_highs_model(mdl)
-
-# solve highs model
-s <- highs_solve(L = as.numeric(highs_mdl$L), lower = highs_mdl$lower, upper = highs_mdl$upper,
-                 A = highs_mdl$A, lhs = highs_mdl$lhs, rhs = highs_mdl$rhs,
-                 offset = highs_mdl$offset)
+# solve model
+sol = mdl %>% solve_model(highs_optimizer())
 
 # get solution
-sol_status = s[["status"]]
-zobj = s[["objective_value"]]
-xsol = s[["primal_solution"]]
-names(xsol) = variable_keys(mdl)
+sol[["status"]]
+sol[["objective_value"]]
 
-# get solution into dataframe
-xsolL = list()
-r = 0
-for (i in 1:np) {
-  for (j in 1:nm) {
-    r = r + 1
-    xsolL[[r]] = c(plants[i], mkts[j], xsol[[glue('x[{i},{j}]')]])
-  }
-}
-soldf = as.data.frame(do.call(rbind, xsolL))
-names(soldf) = c("plants", "mkts", "qty")
-soldf = soldf %>% mutate(qty = as.numeric(as.character(qty)))
+soldf = sol %>% get_solution(x[i, j])
+soldf = soldf %>% mutate(plants = plants[i], mkts = mkts[j]) %>% 
+        rename(qty = value)
+soldf %>% gt()
 
 # visnetwork visualization of solution
 solvisnetdf = make_visnetdf(soldf, plants, mkts)

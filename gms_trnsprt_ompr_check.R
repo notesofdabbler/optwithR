@@ -55,7 +55,7 @@ nm = length(mkts)
 mdl = MIPModel() %>%
   add_variable(x[i, j], i=1:np, j=1:nm, type = "continuous",lb = 0) %>%
   # objective: min cost
-  set_objective(sum_over(cost(i, j) * x[i, j], i = 1:np, j = 1:nm)) %>% 
+  set_objective(sum_over(cost(i, j) * x[i, j], i = 1:np, j = 1:nm), sense = "min") %>% 
   # supply from each plant is below capacity
   add_constraint(sum_over(x[i, j], j = 1:nm) <= cap[i], i = 1:np) %>%  
   # supply to each market meets demand

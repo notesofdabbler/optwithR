@@ -4,10 +4,9 @@
 
 library(highs)
 library(ompr)
-library(ompr.roi)
+library(ompr.highs)
 library(dplyr)
 
-source("ompr_helperfns.R")
 
 # Minimize:
 # x_0 + x_1 + 3
@@ -18,21 +17,21 @@ source("ompr_helperfns.R")
 # 0 <= x_0 <= 4
 # 1 <= x_1
 
+# OMPR model
 mdl = MIPModel() %>%
       add_variable(x0, lb = 0, ub = 4, type = "continuous") %>%
       add_variable(x1, lb = 1, type = "continuous") %>%
-      set_objective(x0+x1+3) %>%
+      set_objective(x0+x1+3, sense = "min") %>%
       add_constraint(x1 <= 7) %>%
       add_constraint(x0 + 2*x1 <= 15) %>%
       add_constraint(x0 + 2*x1 >= 5) %>%
       add_constraint(3*x0 + 2*x1 >= 6)
 
-highs_mdl = as_highs_model(mdl)
+# solve model
+s = mdl %>% solve_model(highs_optimizer())
 
-s <- highs_solve(L = as.numeric(highs_mdl$L), lower = highs_mdl$lower, upper = highs_mdl$upper,
-                 A = highs_mdl$A, lhs = highs_mdl$lhs, rhs = highs_mdl$rhs,
-                 offset = highs_mdl$offset)
+# get solution
+s$status
+s$objective_value
+s$solution
 
-s[["status"]]
-s[["objective_value"]]
-s[["primal_solution"]]
